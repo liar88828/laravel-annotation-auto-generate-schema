@@ -3,12 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\Team;
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Spatie\RouteAttributes\Attributes\Delete;
 use Spatie\RouteAttributes\Attributes\Get;
-use Spatie\RouteAttributes\Attributes\Patch;
 use Spatie\RouteAttributes\Attributes\Post;
 use Spatie\RouteAttributes\Attributes\Prefix;
 use Spatie\RouteAttributes\Attributes\Put;
@@ -28,8 +27,7 @@ class TeamController extends Controller
     public function index(Request $request): JsonResponse
     {
         $teams = Team::query()
-            ->when($request->filled('search'), fn ($q) =>
-                $q->where('id', 'like', "%{$request->search}%")
+            ->when($request->filled('search'), fn ($q) => $q->where('id', 'like', "%{$request->search}%")
             )
             ->latest()
             ->paginate($request->integer('per_page', 15));
@@ -76,5 +74,4 @@ class TeamController extends Controller
 
         return response()->json(['message' => 'Team deleted.']);
     }
-
 }

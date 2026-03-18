@@ -2,14 +2,13 @@
 
 namespace App\Support;
 
-use ReflectionClass;
-use ReflectionProperty;
-use App\Attributes\Migration\Table;
 use App\Attributes\Migration\Column;
-use App\Attributes\Migration\PrimaryKey;
 use App\Attributes\Migration\ForeignKey;
 use App\Attributes\Migration\ForeignSchema;
-use App\Support\ForeignSchemaResolver;
+use App\Attributes\Migration\PrimaryKey;
+use App\Attributes\Migration\Table;
+use ReflectionClass;
+use ReflectionProperty;
 
 /**
  * Generates a Laravel migration Blueprint from a schema class decorated
@@ -18,6 +17,7 @@ use App\Support\ForeignSchemaResolver;
 class MigrationGenerator
 {
     private ReflectionClass $ref;
+
     private Table $table;
 
     private function __construct(private readonly string $schemaClass) {}
@@ -35,8 +35,8 @@ class MigrationGenerator
 
     public static function write(string $schemaClass, ?string $outputDir = null, bool $raw = false): string
     {
-        $content   = static::generate($schemaClass, $raw);
-        $dir       = $outputDir ?? database_path('migrations');
+        $content = static::generate($schemaClass, $raw);
+        $dir = $outputDir ?? database_path('migrations');
         $tableName = static::resolveTableName($schemaClass);
 
         $dir = rtrim(str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $dir), DIRECTORY_SEPARATOR);
@@ -49,12 +49,13 @@ class MigrationGenerator
 
         if ($existing) {
             file_put_contents($existing, $content);
+
             return $existing;
         }
 
         $timestamp = date('Y_m_d_His');
-        $filename  = "{$timestamp}_create_{$tableName}_table.php";
-        $path      = $dir . DIRECTORY_SEPARATOR . $filename;
+        $filename = "{$timestamp}_create_{$tableName}_table.php";
+        $path = $dir.DIRECTORY_SEPARATOR.$filename;
 
         file_put_contents($path, $content);
 
@@ -67,7 +68,7 @@ class MigrationGenerator
             return null;
         }
 
-        $dir     = str_replace('\\', '/', $dir);
+        $dir = str_replace('\\', '/', $dir);
         $pattern = "{$dir}/*_create_{$tableName}_table.php";
         $matches = glob($pattern);
 
@@ -115,8 +116,8 @@ PHP;
         $this->table = $tableAttrs[0]->newInstance();
 
         $tableName = $this->table->name;
-        $upLines   = $this->buildUpLines();
-        $className = 'Create' . str($tableName)->studly() . 'Table';
+        $upLines = $this->buildUpLines();
+        $className = 'Create'.str($tableName)->studly().'Table';
 
         return $this->renderMigration($className, $tableName, $upLines);
     }
@@ -129,7 +130,7 @@ PHP;
             // Primary key
             $pkAttrs = $property->getAttributes(PrimaryKey::class);
             if (! empty($pkAttrs)) {
-                $pk  = $pkAttrs[0]->newInstance();
+                $pk = $pkAttrs[0]->newInstance();
                 $col = $pk->name ?? $property->getName();
 
                 if (in_array($pk->type, ['uuid', 'ulid'])) {
@@ -137,25 +138,31 @@ PHP;
                 } else {
                     $lines[] = "\$table->{$pk->type}('{$col}');";
                 }
+
                 continue;
             }
 
             // #[ForeignSchema] — expand into column + FK constraint
             $fsAttrs = $property->getAttributes(ForeignSchema::class);
             if (! empty($fsAttrs)) {
-                $fs   = $fsAttrs[0]->newInstance();
+                $fs = $fsAttrs[0]->newInstance();
                 $spec = ForeignSchemaResolver::resolve($fs);
                 $name = $property->getName();
 
                 $line = "\$table->{$spec['colType']}('{$name}')";
-                if ($spec['nullable']) $line .= '->nullable()';
-                if ($spec['index'])    $line .= '->index()';
-                $lines[] = $line . ';';
+                if ($spec['nullable']) {
+                    $line .= '->nullable()';
+                }
+                if ($spec['index']) {
+                    $line .= '->index()';
+                }
+                $lines[] = $line.';';
                 $lines[] = "\$table->foreign('{$name}')"
-                    . "->references('{$spec['references']}')"
-                    . "->on('{$spec['table']}')"
-                    . "->onDelete('{$spec['onDelete']}')"
-                    . "->onUpdate('{$spec['onUpdate']}');";
+                    ."->references('{$spec['references']}')"
+                    ."->on('{$spec['table']}')"
+                    ."->onDelete('{$spec['onDelete']}')"
+                    ."->onUpdate('{$spec['onUpdate']}');";
+
                 continue;
             }
 
@@ -166,8 +173,8 @@ PHP;
             }
 
             /** @var Column $colDef */
-            $colDef  = $colAttrs[0]->newInstance();
-            $name    = $colDef->name ?? $property->getName();
+            $colDef = $colAttrs[0]->newInstance();
+            $name = $colDef->name ?? $property->getName();
             $lines[] = $this->renderColumnLine($name, $colDef, $property);
         }
 
@@ -195,7 +202,7 @@ PHP;
         // Build the base fluent call — priority: precision/scale > length > bare
         if ($col->precision !== null) {
             $scale = $col->scale ?? 2;
-            $args  = "'{$name}', {$col->precision}, {$scale}";
+            $args = "'{$name}', {$col->precision}, {$scale}";
         } elseif ($col->length !== null) {
             $args = "'{$name}', {$col->length}";
         } else {
@@ -235,29 +242,36 @@ PHP;
         if (! empty($fkAttrs)) {
             /** @var ForeignKey $fk */
             $fk = $fkAttrs[0]->newInstance();
-            $line .= ';' . PHP_EOL;
+            $line .= ';'.PHP_EOL;
             $line .= "            \$table->foreign('{$name}')"
-                . "->references('{$fk->references}')"
-                . "->on('{$fk->on}')"
-                . "->onDelete('{$fk->onDelete}')"
-                . "->onUpdate('{$fk->onUpdate}')";
+                ."->references('{$fk->references}')"
+                ."->on('{$fk->on}')"
+                ."->onDelete('{$fk->onDelete}')"
+                ."->onUpdate('{$fk->onUpdate}')";
         }
 
-        return $line . ';';
+        return $line.';';
     }
 
     private function renderPhpValue(mixed $value): string
     {
-        if (is_null($value))   return 'null';
-        if (is_bool($value))   return $value ? 'true' : 'false';
-        if (is_string($value)) return "'" . addslashes($value) . "'";
+        if (is_null($value)) {
+            return 'null';
+        }
+        if (is_bool($value)) {
+            return $value ? 'true' : 'false';
+        }
+        if (is_string($value)) {
+            return "'".addslashes($value)."'";
+        }
+
         return (string) $value;
     }
 
     private function renderMigration(string $className, string $tableName, array $upLines): string
     {
         $indent = str_repeat(' ', 12);
-        $body   = implode(PHP_EOL . $indent, $upLines);
+        $body = implode(PHP_EOL.$indent, $upLines);
 
         return <<<PHP
 <?php
@@ -285,7 +299,7 @@ PHP;
 
     private static function resolveTableName(string $schemaClass): string
     {
-        $ref   = new ReflectionClass($schemaClass);
+        $ref = new ReflectionClass($schemaClass);
         $attrs = $ref->getAttributes(Table::class);
 
         if (! empty($attrs)) {

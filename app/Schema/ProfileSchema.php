@@ -3,21 +3,19 @@
 namespace App\Schema;
 
 // ── Migration ──────────────────────────────────────────────────────────────
-use App\Attributes\Migration\Table;
-use App\Attributes\Migration\Column;
-use App\Attributes\Migration\PrimaryKey;
-use App\Attributes\Migration\ForeignKey;
 use App\Attributes\Migration\BelongsTo;
-
+use App\Attributes\Migration\Column;
+use App\Attributes\Migration\ForeignSchema;
+use App\Attributes\Migration\PrimaryKey;
+use App\Attributes\Migration\Table;
 // ── Validation ─────────────────────────────────────────────────────────────
-use App\Attributes\Validation\Max;
-use App\Attributes\Validation\Uuid;
-
-// ── Model ──────────────────────────────────────────────────────────────────
+use App\Attributes\Model\Cast;
 use App\Attributes\Model\EloquentModel;
 use App\Attributes\Model\Fillable;
-use App\Attributes\Model\Cast;
-
+// ── Model ──────────────────────────────────────────────────────────────────
+use App\Attributes\Validation\Max;
+use App\Attributes\Validation\Required;
+use App\Attributes\Validation\Uuid;
 // Model
 use App\Models\Profile;
 
@@ -32,8 +30,10 @@ class ProfileSchema
 
     // ── Role Relation (based on your current RoleSchema) ────────────────────
     #[Column(type: 'unsignedBigInteger', nullable: false, index: true, unique: true)]
-    #[ForeignKey(references: 'id', on: 'roles', onDelete: 'cascade')]
+    #[ForeignSchema(schema: RoleSchema::class, onDelete: 'cascade')]
     #[BelongsTo(related: RoleSchema::class)]
+    #[Required] // ← add this
+    #[Fillable]
     public int $role_id;
 
     // ── Bio ────────────────────────────────────────────────────────────────

@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use App\Attributes\Model\UsesSchema;
-use App\Traits\HasSchema;
 use App\Schema\DepartmentSchema;
-use App\Models\Role;
+use App\Traits\HasSchema;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
 #[UsesSchema(DepartmentSchema::class)]
 class Department extends Model
 {
@@ -27,8 +28,9 @@ class Department extends Model
     protected $casts = [
         'budget' => 'decimal:2',
     ];
-    public function roles(): \Illuminate\Database\Eloquent\Relations\HasMany
+
+    public function roles(): HasMany
     {
-        return $this->hasMany(\App\Models\Role::class, 'department_id');
+        return $this->hasMany(Role::class, 'department_id');
     }
 }

@@ -3,8 +3,8 @@
 namespace Database\Factories;
 
 use App\Models\Article;
+use App\Models\Role;
 use Illuminate\Database\Eloquent\Factories\Factory;
-use Illuminate\Support\Str;
 
 /**
  * ArticleFactory
@@ -22,7 +22,7 @@ class ArticleFactory extends Factory
     public function definition(): array
     {
         return [
-            'user_id' => \App\Models\User::factory()->create()->getKey(),
+            'role_id' => Role::factory()->create()->getKey(),
             'title' => fake()->sentence(3),
             'slug' => fake()->slug(),
             'content' => fake()->paragraphs(3, true),

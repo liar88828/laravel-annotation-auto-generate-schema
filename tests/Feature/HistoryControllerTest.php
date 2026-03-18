@@ -2,12 +2,11 @@
 
 namespace Tests\Feature;
 
-use Tests\TestCase;
 use App\Models\History;
-
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Arr;
 use PHPUnit\Framework\Attributes\Test;
+use Tests\TestCase;
 
 /**
  * HistoryControllerTest
@@ -81,7 +80,7 @@ class HistoryControllerTest extends TestCase
     #[Test]
     public function update_modifies_an_existing_history(): void
     {
-        $history  = History::factory()->create();
+        $history = History::factory()->create();
         $data = Arr::only(History::factory()->make()->toArray(), ['action', 'description']);
 
         $response = $this->putJson("/histories/{$history->id}", $data);
@@ -101,5 +100,4 @@ class HistoryControllerTest extends TestCase
 
         $this->assertDatabaseMissing((new History)->getTable(), ['id' => $history->id]);
     }
-
 }

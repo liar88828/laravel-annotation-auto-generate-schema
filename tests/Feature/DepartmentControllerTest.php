@@ -2,12 +2,11 @@
 
 namespace Tests\Feature;
 
-use Tests\TestCase;
 use App\Models\Department;
-
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Arr;
 use PHPUnit\Framework\Attributes\Test;
+use Tests\TestCase;
 
 /**
  * DepartmentControllerTest
@@ -81,7 +80,7 @@ class DepartmentControllerTest extends TestCase
     #[Test]
     public function update_modifies_an_existing_department(): void
     {
-        $department  = Department::factory()->create();
+        $department = Department::factory()->create();
         $data = Arr::only(Department::factory()->make()->toArray(), ['name', 'code', 'slug', 'description', 'status', 'budget']);
 
         $response = $this->putJson("/departments/{$department->id}", $data);
@@ -101,5 +100,4 @@ class DepartmentControllerTest extends TestCase
 
         $this->assertDatabaseMissing((new Department)->getTable(), ['id' => $department->id]);
     }
-
 }

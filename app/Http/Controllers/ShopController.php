@@ -3,8 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Shop;
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Spatie\RouteAttributes\Attributes\Delete;
 use Spatie\RouteAttributes\Attributes\Get;
@@ -28,8 +28,7 @@ class ShopController extends Controller
     public function index(Request $request): JsonResponse
     {
         $shops = Shop::query()
-            ->when($request->filled('search'), fn ($q) =>
-                $q->where('id', 'like', "%{$request->search}%")
+            ->when($request->filled('search'), fn ($q) => $q->where('id', 'like', "%{$request->search}%")
             )
             ->latest()
             ->paginate($request->integer('per_page', 15));
@@ -76,7 +75,6 @@ class ShopController extends Controller
 
         return response()->json(['message' => 'Shop deleted.']);
     }
-
 
     // ── PATCH /shops/restore/{id} ───────────────────────────────────────────
 

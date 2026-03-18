@@ -2,11 +2,12 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use App\Attributes\Model\UsesSchema;
-use App\Traits\HasSchema;
 use App\Schema\TeamSchema;
+use App\Traits\HasSchema;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
 #[UsesSchema(TeamSchema::class)]
 class Team extends Model
 {
@@ -23,5 +24,4 @@ class Team extends Model
         'slug',
         'description',
     ];
-
 }

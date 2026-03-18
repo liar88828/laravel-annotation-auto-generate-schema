@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use App\Attributes\Model\UsesSchema;
-use App\Traits\HasSchema;
 use App\Schema\HistorySchema;
-use App\Models\Role;
+use App\Traits\HasSchema;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+
 #[UsesSchema(HistorySchema::class)]
 class History extends Model
 {
@@ -27,9 +28,10 @@ class History extends Model
     protected $casts = [
         'meta' => 'array',
     ];
-    public function roles(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+
+    public function roles(): BelongsToMany
     {
-        return $this->belongsToMany(\App\Models\Role::class, 'history_role', 'history_id', 'role_id')
+        return $this->belongsToMany(Role::class, 'history_role', 'history_id', 'role_id')
             ->withTimestamps();
     }
 }

@@ -1,7 +1,8 @@
 <?php
 
-use Illuminate\Database\Migrations\Migration;
+use App\Schema\DepartmentSchema;
 use App\Traits\RunsSchemaMigration;
+use Illuminate\Database\Migrations\Migration;
 
 return new class extends Migration
 {
@@ -9,6 +10,6 @@ return new class extends Migration
 
     protected function schema(): string
     {
-        return \App\Schema\DepartmentSchema::class;
+        return DepartmentSchema::class;
     }
 };

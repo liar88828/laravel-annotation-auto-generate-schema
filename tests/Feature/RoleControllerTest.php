@@ -2,12 +2,11 @@
 
 namespace Tests\Feature;
 
-use Tests\TestCase;
 use App\Models\Role;
-
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Arr;
 use PHPUnit\Framework\Attributes\Test;
+use Tests\TestCase;
 
 /**
  * RoleControllerTest
@@ -81,7 +80,7 @@ class RoleControllerTest extends TestCase
     #[Test]
     public function update_modifies_an_existing_role(): void
     {
-        $role  = Role::factory()->create();
+        $role = Role::factory()->create();
         $data = Arr::only(Role::factory()->make()->toArray(), ['public_id', 'name', 'status', 'age', 'born_at']);
 
         $response = $this->putJson("/roles/{$role->id}", $data);
@@ -101,7 +100,6 @@ class RoleControllerTest extends TestCase
 
         $this->assertSoftDeleted((new Role)->getTable(), ['id' => $role->id]);
     }
-
 
     // ── Soft delete / restore ──────────────────────────────────────────────────
 

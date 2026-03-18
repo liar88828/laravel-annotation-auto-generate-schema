@@ -2,12 +2,12 @@
 
 namespace Tests\Feature;
 
-use Tests\TestCase;
 use App\Models\Article;
-use App\Models\User;
+use App\Models\Role;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Arr;
 use PHPUnit\Framework\Attributes\Test;
+use Tests\TestCase;
 
 /**
  * ArticleControllerTest
@@ -25,10 +25,8 @@ class ArticleControllerTest extends TestCase
     #[Test]
     public function index_returns_paginated_list(): void
     {
-        $user = User::factory()->create();
-        $this->actingAs($user);
-        Article::factory()->for($user)->create();
-        Article::factory()->for($user)->create();
+        Article::factory()->create();
+        Article::factory()->create();
 
         $response = $this->getJson('/articles');
 
@@ -41,9 +39,9 @@ class ArticleControllerTest extends TestCase
     #[Test]
     public function store_creates_a_new_article(): void
     {
-        $user = User::factory()->create();
-        $this->actingAs($user);
+        $role = Role::factory()->create();
         $data = Arr::only(Article::factory()->make()->toArray(), ['title', 'slug', 'content', 'excerpt', 'status', 'published_at']);
+        $data['role_id'] = $role->id;
 
         $response = $this->postJson('/articles', $data);
 
@@ -56,8 +54,6 @@ class ArticleControllerTest extends TestCase
     #[Test]
     public function store_fails_validation_with_empty_data(): void
     {
-        $user = User::factory()->create();
-        $this->actingAs($user);
         $response = $this->postJson('/articles', []);
 
         $response->assertUnprocessable();
@@ -68,9 +64,7 @@ class ArticleControllerTest extends TestCase
     #[Test]
     public function show_returns_a_single_article(): void
     {
-        $user = User::factory()->create();
-        $this->actingAs($user);
-        $article = Article::factory()->for($user)->create();
+        $article = Article::factory()->create();
 
         $response = $this->getJson("/articles/{$article->id}");
 
@@ -89,10 +83,10 @@ class ArticleControllerTest extends TestCase
     #[Test]
     public function update_modifies_an_existing_article(): void
     {
-        $user = User::factory()->create();
-        $this->actingAs($user);
-        $article  = Article::factory()->for($user)->create();
+        $role = Role::factory()->create();
+        $article = Article::factory()->create();
         $data = Arr::only(Article::factory()->make()->toArray(), ['title', 'slug', 'content', 'excerpt', 'status', 'published_at']);
+        $data['role_id'] = $role->id;
 
         $response = $this->putJson("/articles/{$article->id}", $data);
 
@@ -105,24 +99,19 @@ class ArticleControllerTest extends TestCase
     #[Test]
     public function destroy_deletes_a_article(): void
     {
-        $user = User::factory()->create();
-        $this->actingAs($user);
-        $article = Article::factory()->for($user)->create();
+        $article = Article::factory()->create();
 
         $this->deleteJson("/articles/{$article->id}")->assertOk();
 
         $this->assertSoftDeleted((new Article)->getTable(), ['id' => $article->id]);
     }
 
-
     // ── Soft delete / restore ──────────────────────────────────────────────────
 
     #[Test]
     public function restore_recovers_a_soft_deleted_article(): void
     {
-        $user = User::factory()->create();
-        $this->actingAs($user);
-        $article = Article::factory()->for($user)->create();
+        $article = Article::factory()->create();
         $article->delete();
 
         $this->patchJson("/articles/restore/{$article->id}")->assertOk();

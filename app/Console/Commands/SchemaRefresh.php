@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Attributes\Model\EloquentModel;
 use App\Support\MigrationGenerator;
 use App\Support\ModelGenerator;
+use App\Support\RelationGenerator;
 use App\Support\SchemaTestGenerator;
 use Illuminate\Console\Command;
 
@@ -23,17 +24,19 @@ use Illuminate\Console\Command;
  *   php artisan schema:refresh --model-only             only model files
  *   php artisan schema:refresh --factory-only           only factory files
  *   php artisan schema:refresh --test-only              only test files
+ *   php artisan schema:refresh --pivot                  also generate pivot table migrations
  */
 class SchemaRefresh extends Command
 {
     protected $signature = 'schema:refresh
-                            {class?          : Short name (DiscountSchema) or FQCN. Omit to refresh all.}
-                            {--force         : Overwrite existing files without confirmation}
-                            {--raw           : Generate full Schema::create() migrations}
+                            {class?           : Short name (DiscountSchema) or FQCN. Omit to refresh all.}
+                            {--force          : Overwrite existing files without confirmation}
+                            {--raw            : Generate full Schema::create() migrations}
                             {--migration-only : Only regenerate migration files}
-                            {--model-only    : Only regenerate model files}
-                            {--factory-only  : Only regenerate factory files}
-                            {--test-only     : Only regenerate test files}';
+                            {--model-only     : Only regenerate model files}
+                            {--factory-only   : Only regenerate factory files}
+                            {--test-only      : Only regenerate test files}
+                            {--pivot          : Also generate pivot table migrations for BelongsToMany relations}';
 
     protected $description = 'Regenerate Model + Migration + Factory + Test for one schema or all schemas in app/Schema/.';
 
@@ -53,10 +56,9 @@ class SchemaRefresh extends Command
             return self::FAILURE;
         }
 
-        // Which artifacts to generate
         $only = $this->resolveOnly();
 
-        $counts = ['migration' => 0, 'model' => 0, 'factory' => 0, 'test' => 0, 'failed' => 0];
+        $counts = ['migration' => 0, 'model' => 0, 'factory' => 0, 'test' => 0, 'pivot' => 0, 'failed' => 0];
 
         $this->line('');
 
@@ -71,6 +73,28 @@ class SchemaRefresh extends Command
                     $counts['migration']++;
                 } catch (\Throwable $e) {
                     $this->error('   Migration ✗ '.$e->getMessage());
+                    $counts['failed']++;
+                }
+            }
+
+            // ── Pivot migrations ───────────────────────────────────────────
+            if ($this->option('pivot')) {
+                try {
+                    $paths = RelationGenerator::writePivotMigrations(
+                        $schemaClass,
+                        null,
+                        (bool) $this->option('force'),  // ← pass force
+                    );
+                    if (empty($paths)) {
+                        $this->warn('   Pivot     skipped (use --force to overwrite)');
+                    } else {
+                        foreach ($paths as $path) {
+                            $this->info("   Pivot     → {$path}");
+                            $counts['pivot']++;
+                        }
+                    }
+                } catch (\Throwable $e) {
+                    $this->error('   Pivot     ✗ '.$e->getMessage());
                     $counts['failed']++;
                 }
             }
@@ -135,6 +159,9 @@ class SchemaRefresh extends Command
         if ($only['migration']) {
             $parts[] = "{$counts['migration']} migration(s)";
         }
+        if ($this->option('pivot')) {
+            $parts[] = "{$counts['pivot']} pivot migration(s)";
+        }
         if ($only['model']) {
             $parts[] = "{$counts['model']} model(s)";
         }
@@ -147,7 +174,7 @@ class SchemaRefresh extends Command
 
         $this->line('Done: '.count($schemas).' schema(s) — '.implode(', ', $parts).", {$counts['failed']} failed.");
 
-        if ($only['migration']) {
+        if ($only['migration'] || $this->option('pivot')) {
             $this->line('');
             $this->line('Next: <fg=yellow>php artisan migrate</>');
         }
@@ -166,7 +193,6 @@ class SchemaRefresh extends Command
         $factoryOnly = $this->option('factory-only');
         $testOnly = $this->option('test-only');
 
-        // If any --*-only flag is set, only generate those
         $anyOnly = $migrationOnly || $modelOnly || $factoryOnly || $testOnly;
 
         return [
@@ -201,13 +227,11 @@ class SchemaRefresh extends Command
             return null;
         }
 
-        // Delegate to SchemaFactory command logic by calling the generator directly
         return $this->generateFactory($schemaClass, $path);
     }
 
     private function generateFactory(string $schemaClass, string $path): ?string
     {
-        // Call the Artisan command to reuse all its logic
         $flags = ['class' => class_basename($schemaClass)];
         if ($this->option('force')) {
             $flags['--force'] = true;

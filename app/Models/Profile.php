@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use App\Attributes\Model\UsesSchema;
-use App\Traits\HasSchema;
 use App\Schema\ProfileSchema;
-use App\Models\Role;
+use App\Traits\HasSchema;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
 #[UsesSchema(ProfileSchema::class)]
 class Profile extends Model
 {
@@ -20,6 +21,7 @@ class Profile extends Model
     public $incrementing = false;
 
     protected $fillable = [
+        'role_id',
         'bio',
         'avatar',
         'phone',
@@ -30,8 +32,9 @@ class Profile extends Model
     protected $casts = [
         'birth_date' => 'date:Y-m-d',
     ];
-    public function role(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+
+    public function role(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\Role::class);
+        return $this->belongsTo(Role::class);
     }
 }

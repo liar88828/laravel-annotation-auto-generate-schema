@@ -5,7 +5,7 @@ namespace App\Schema;
 // ── Migration ──────────────────────────────────────────────────────────────
 use App\Attributes\Migration\BelongsTo;
 use App\Attributes\Migration\Column;
-use App\Attributes\Migration\ForeignKey;
+use App\Attributes\Migration\ForeignSchema;
 use App\Attributes\Migration\PrimaryKey;
 use App\Attributes\Migration\Table;
 // ── Validation ─────────────────────────────────────────────────────────────
@@ -30,10 +30,11 @@ class ArticleSchema
 
     // ── User Relation (Author) ─────────────────────────────────────────────
     #[Column(type: 'unsignedBigInteger', nullable: false, index: true)]
-    #[ForeignKey(references: 'id', on: 'users', onDelete: 'cascade')]
+    #[ForeignSchema(schema: RoleSchema::class, onDelete: 'cascade')]
     #[Fillable] // ← add this
-    #[BelongsTo(related: UserSchema::class)]
-    public int $user_id;
+    #[Required] // ← add this
+    #[BelongsTo(related: RoleSchema::class)]
+    public int $role_id;
 
     // ── Title ──────────────────────────────────────────────────────────────
     #[Column(type: 'string', length: 191, nullable: false)]

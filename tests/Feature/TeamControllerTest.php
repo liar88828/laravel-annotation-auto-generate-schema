@@ -2,12 +2,11 @@
 
 namespace Tests\Feature;
 
-use Tests\TestCase;
 use App\Models\Team;
-
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Arr;
 use PHPUnit\Framework\Attributes\Test;
+use Tests\TestCase;
 
 /**
  * TeamControllerTest
@@ -81,7 +80,7 @@ class TeamControllerTest extends TestCase
     #[Test]
     public function update_modifies_an_existing_team(): void
     {
-        $team  = Team::factory()->create();
+        $team = Team::factory()->create();
         $data = Arr::only(Team::factory()->make()->toArray(), ['name', 'slug', 'description']);
 
         $response = $this->putJson("/teams/{$team->id}", $data);
@@ -101,5 +100,4 @@ class TeamControllerTest extends TestCase
 
         $this->assertDatabaseMissing((new Team)->getTable(), ['id' => $team->id]);
     }
-
 }

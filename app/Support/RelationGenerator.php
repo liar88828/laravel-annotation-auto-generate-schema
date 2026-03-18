@@ -6,6 +6,7 @@ use App\Attributes\Migration\BelongsTo;
 use App\Attributes\Migration\BelongsToMany;
 use App\Attributes\Migration\HasMany;
 use App\Attributes\Migration\HasOne;
+use App\Attributes\Migration\PrimaryKey;
 use App\Attributes\Migration\Table;
 use ReflectionClass;
 
@@ -58,23 +59,49 @@ class RelationGenerator
      */
     public static function writePivotMigrations(
         string $schemaClass,
-        ?string $outputDir = null
+        ?string $outputDir = null,
+        bool $force = false,
     ): array {
         $migrations = static::pivotMigrations($schemaClass);
         $dir = $outputDir ?? database_path('migrations');
         $written = [];
 
         foreach ($migrations as $tableName => $content) {
+            // Look for an existing pivot migration file for this table
+            $existing = static::findExistingPivotMigration($dir, $tableName);
+
+            if ($existing && ! $force) {
+                // Skip — file exists and force is off
+                continue;
+            }
+
+            if ($existing && $force) {
+                // Overwrite in place — keep the original filename/timestamp
+                file_put_contents($existing, $content);
+                $written[] = $existing;
+
+                continue;
+            }
+
+            // No existing file — create with fresh timestamp
             $timestamp = date('Y_m_d_His');
             $filename = "{$timestamp}_create_{$tableName}_table.php";
             $path = $dir.'/'.$filename;
             file_put_contents($path, $content);
             $written[] = $path;
-            // small sleep to guarantee unique timestamps if multiple pivots
             usleep(1000);
         }
 
         return $written;
+    }
+
+    private static function findExistingPivotMigration(string $dir, string $tableName): ?string
+    {
+        $dir = str_replace('\\', '/', rtrim($dir, '/\\'));
+        $pattern = "{$dir}/*_create_{$tableName}_table.php";
+        $matches = glob($pattern);
+
+        return ! empty($matches) ? $matches[0] : null;
     }
 
     /**
@@ -255,11 +282,40 @@ PHP;
                     $rel->withTimestamps, $rel->pivotColumns,
                     $this->resolveTableName($this->schemaClass),
                     $this->resolveTableName($rel->related),
+                    $this->resolvePkType($this->schemaClass),   // ← add
+                    $this->resolvePkType($rel->related),         // ← add
                 );
             }
         }
 
         return $result;
+    }
+
+    /**
+     * Inspect the schema class's #[PrimaryKey] attribute and return
+     * the appropriate Blueprint column method name.
+     *
+     * uuid/ulid → 'uuid' / 'ulid'
+     * anything else → 'unsignedBigInteger'
+     */
+    private function resolvePkType(string $schemaClass): string
+    {
+        if (! class_exists($schemaClass)) {
+            return 'unsignedBigInteger';
+        }
+
+        $ref = new ReflectionClass($schemaClass);
+
+        foreach ($ref->getProperties() as $property) {
+            $attrs = $property->getAttributes(PrimaryKey::class);
+            if (! empty($attrs)) {
+                $pk = $attrs[0]->newInstance();
+
+                return in_array($pk->type, ['uuid', 'ulid']) ? $pk->type : 'unsignedBigInteger';
+            }
+        }
+
+        return 'unsignedBigInteger';
     }
 
     private function renderPivotMigration(
@@ -270,13 +326,14 @@ PHP;
         array $extraColumns,
         string $ownerTable,
         string $relatedTable,
+        string $fpkType = 'unsignedBigInteger',  // ← add
+        string $rpkType = 'unsignedBigInteger',  // ← add
     ): string {
         $className = 'Create'.str_replace('_', '', ucwords($pivotTable, '_')).'Table';
         $timestamps = $withTimestamps ? PHP_EOL.'            $table->timestamps();' : '';
 
         $extraCols = '';
         foreach ($extraColumns as $colDef) {
-            // Simple string columns for pivot extras; pass 'type:name' format
             [$type, $colName] = str_contains($colDef, ':')
                 ? explode(':', $colDef, 2)
                 : ['string', $colDef];
@@ -295,8 +352,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('{$pivotTable}', function (Blueprint \$table) {
-            \$table->unsignedBigInteger('{$fpk}');
-            \$table->unsignedBigInteger('{$rpk}');
+            \$table->{$fpkType}('{$fpk}');
+            \$table->{$rpkType}('{$rpk}');
             \$table->primary(['{$fpk}', '{$rpk}']);
             \$table->foreign('{$fpk}')->references('id')->on('{$ownerTable}')->onDelete('cascade');
             \$table->foreign('{$rpk}')->references('id')->on('{$relatedTable}')->onDelete('cascade');{$extraCols}{$timestamps}

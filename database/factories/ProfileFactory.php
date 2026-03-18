@@ -3,8 +3,8 @@
 namespace Database\Factories;
 
 use App\Models\Profile;
+use App\Models\Role;
 use Illuminate\Database\Eloquent\Factories\Factory;
-use Illuminate\Support\Str;
 
 /**
  * ProfileFactory
@@ -22,7 +22,7 @@ class ProfileFactory extends Factory
     public function definition(): array
     {
         return [
-            'role_id' => \App\Models\Role::factory()->create()->getKey(),
+            'role_id' => Role::factory()->create()->getKey(),
             'bio' => fake()->boolean(80) ? fake()->paragraph() : null,
             'avatar' => fake()->boolean(80) ? fake()->imageUrl() : null,
             'phone' => fake()->boolean(80) ? fake()->phoneNumber() : null,

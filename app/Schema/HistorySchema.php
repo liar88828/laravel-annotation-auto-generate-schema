@@ -3,21 +3,18 @@
 namespace App\Schema;
 
 // ── Migration ──────────────────────────────────────────────────────────────
-use App\Attributes\Migration\Table;
+use App\Attributes\Migration\BelongsToMany;
 use App\Attributes\Migration\Column;
 use App\Attributes\Migration\PrimaryKey;
-use App\Attributes\Migration\BelongsToMany;
-
+use App\Attributes\Migration\Table;
 // ── Validation ─────────────────────────────────────────────────────────────
-use App\Attributes\Validation\Required;
-use App\Attributes\Validation\Max;
-use App\Attributes\Validation\Uuid;
-
-// ── Model ──────────────────────────────────────────────────────────────────
+use App\Attributes\Model\Cast;
 use App\Attributes\Model\EloquentModel;
 use App\Attributes\Model\Fillable;
-use App\Attributes\Model\Cast;
-
+// ── Model ──────────────────────────────────────────────────────────────────
+use App\Attributes\Validation\Max;
+use App\Attributes\Validation\Required;
+use App\Attributes\Validation\Uuid;
 // Model
 use App\Models\History;
 

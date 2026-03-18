@@ -2,16 +2,16 @@
 
 namespace App\Traits;
 
-use ReflectionClass;
-use ReflectionProperty;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
-use App\Attributes\Migration\Table;
 use App\Attributes\Migration\Column;
-use App\Attributes\Migration\PrimaryKey;
 use App\Attributes\Migration\ForeignKey;
 use App\Attributes\Migration\ForeignSchema;
+use App\Attributes\Migration\PrimaryKey;
+use App\Attributes\Migration\Table;
 use App\Support\ForeignSchemaResolver;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+use ReflectionClass;
+use ReflectionProperty;
 
 /**
  * RunsSchemaMigration trait
@@ -46,7 +46,7 @@ trait RunsSchemaMigration
     public function up(): void
     {
         $schema = $this->resolveSchema();
-        $table  = $this->resolveTable($schema);
+        $table = $this->resolveTable($schema);
 
         Schema::create($table->name, function (Blueprint $blueprint) use ($schema, $table) {
             $this->applyColumns($blueprint, $schema);
@@ -63,8 +63,8 @@ trait RunsSchemaMigration
 
     public function down(): void
     {
-        $schema    = $this->resolveSchema();
-        $table     = $this->resolveTable($schema);
+        $schema = $this->resolveSchema();
+        $table = $this->resolveTable($schema);
 
         Schema::dropIfExists($table->name);
     }
@@ -81,7 +81,7 @@ trait RunsSchemaMigration
             $pkAttrs = $property->getAttributes(PrimaryKey::class);
             if (! empty($pkAttrs)) {
                 /** @var PrimaryKey $pk */
-                $pk  = $pkAttrs[0]->newInstance();
+                $pk = $pkAttrs[0]->newInstance();
                 $col = $pk->name ?? $property->getName();
 
                 $column = $blueprint->{$pk->type}($col);
@@ -90,25 +90,31 @@ trait RunsSchemaMigration
                 if (in_array($pk->type, ['uuid', 'ulid'])) {
                     $column->primary();
                 }
+
                 continue;
             }
 
             // ── #[ForeignSchema] — expand into column + FK ────────────────
             $fsAttrs = $property->getAttributes(ForeignSchema::class);
             if (! empty($fsAttrs)) {
-                $fs   = $fsAttrs[0]->newInstance();
+                $fs = $fsAttrs[0]->newInstance();
                 $spec = ForeignSchemaResolver::resolve($fs);
                 $name = $property->getName();
 
                 $col = $blueprint->{$spec['colType']}($name);
-                if ($spec['nullable']) $col->nullable();
-                if ($spec['index'])    $col->index();
+                if ($spec['nullable']) {
+                    $col->nullable();
+                }
+                if ($spec['index']) {
+                    $col->index();
+                }
 
                 $blueprint->foreign($name)
                     ->references($spec['references'])
                     ->on($spec['table'])
                     ->onDelete($spec['onDelete'])
                     ->onUpdate($spec['onUpdate']);
+
                 continue;
             }
 
@@ -119,28 +125,29 @@ trait RunsSchemaMigration
             }
 
             /** @var Column $colDef */
-            $colDef  = $colAttrs[0]->newInstance();
-            $name    = $colDef->name ?? $property->getName();
+            $colDef = $colAttrs[0]->newInstance();
+            $name = $colDef->name ?? $property->getName();
 
             $this->applyColumn($blueprint, $name, $colDef, $property);
         }
     }
 
     private function applyColumn(
-        Blueprint          $blueprint,
-        string             $name,
-        Column             $col,
+        Blueprint $blueprint,
+        string $name,
+        Column $col,
         ReflectionProperty $property,
     ): void {
         // rememberToken() is a Blueprint macro with no arguments
         if ($col->type === 'rememberToken') {
             $blueprint->rememberToken();
+
             return;
         }
 
         // Build the base column — priority: precision/scale > length > bare
         if ($col->precision !== null) {
-            $scale  = $col->scale ?? 2;
+            $scale = $col->scale ?? 2;
             $column = $blueprint->{$col->type}($name, $col->precision, $scale);
         } elseif ($col->length !== null) {
             $column = $blueprint->{$col->type}($name, $col->length);
@@ -209,7 +216,7 @@ trait RunsSchemaMigration
 
         if (empty($attrs)) {
             throw new \RuntimeException(
-                'Schema [' . $schemaRef->getName() . '] is missing the #[Table] attribute.'
+                'Schema ['.$schemaRef->getName().'] is missing the #[Table] attribute.'
             );
         }
 

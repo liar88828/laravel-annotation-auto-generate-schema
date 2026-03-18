@@ -2,17 +2,17 @@
 
 namespace App\Console\Commands;
 
+use App\Attributes\Migration\BelongsTo;
+use App\Attributes\Migration\BelongsToMany;
+use App\Attributes\Migration\Column;
+use App\Attributes\Migration\ForeignSchema;
+use App\Attributes\Migration\HasMany;
+use App\Attributes\Migration\HasOne;
+use App\Attributes\Migration\Table;
+use App\Attributes\Model\Fillable;
 use Illuminate\Console\Command;
 use Illuminate\Support\Str;
 use ReflectionClass;
-use App\Attributes\Migration\Table;
-use App\Attributes\Migration\HasOne;
-use App\Attributes\Migration\HasMany;
-use App\Attributes\Migration\BelongsTo;
-use App\Attributes\Migration\BelongsToMany;
-use App\Attributes\Migration\ForeignSchema;
-use App\Attributes\Model\Fillable;
-use App\Attributes\Migration\Column;
 
 /**
  * SchemaController
@@ -56,6 +56,7 @@ class SchemaController extends Command
             $this->error('Provide a schema name or use --all.');
             $this->line('  php artisan schema:controller ProductSchema');
             $this->line('  php artisan schema:controller --all');
+
             return self::FAILURE;
         }
 
@@ -66,6 +67,7 @@ class SchemaController extends Command
         if (! class_exists($schemaClass)) {
             $this->error("Class [{$schemaClass}] not found.");
             $this->line('Run: composer dump-autoload');
+
             return self::FAILURE;
         }
 
@@ -82,6 +84,7 @@ class SchemaController extends Command
 
         if (! is_dir($schemaDir)) {
             $this->error("Schema directory not found: {$schemaDir}");
+
             return self::FAILURE;
         }
 
@@ -89,14 +92,15 @@ class SchemaController extends Command
 
         if (empty($files)) {
             $this->warn('No schema files found in app/Schema/');
+
             return self::SUCCESS;
         }
 
-        $this->line('Found ' . count($files) . ' schema(s). Generating controllers...');
+        $this->line('Found '.count($files).' schema(s). Generating controllers...');
         $this->line('');
 
         $success = 0;
-        $failed  = 0;
+        $failed = 0;
 
         foreach ($files as $file) {
             $schemaClass = $this->fileToClass($file);
@@ -106,6 +110,7 @@ class SchemaController extends Command
             if (! class_exists($schemaClass)) {
                 $this->warn("  Skipped [{$schemaClass}] — class not found after require.");
                 $failed++;
+
                 continue;
             }
 
@@ -134,7 +139,7 @@ class SchemaController extends Command
     private function generateOne(string $schemaClass, bool $quiet = false): int
     {
         $blade = $this->option('blade');
-        $meta  = $this->extractMeta($schemaClass);
+        $meta = $this->extractMeta($schemaClass);
 
         $controllerPath = $this->writeController($meta, $blade);
 
@@ -157,7 +162,7 @@ class SchemaController extends Command
             if ($testPath) {
                 $this->info("  Test:       {$testPath}");
             } else {
-                $this->warn("  Test       skipped (use --force to overwrite)");
+                $this->warn('  Test       skipped (use --force to overwrite)');
             }
         }
 
@@ -188,40 +193,61 @@ class SchemaController extends Command
 
     private function extractMeta(string $schemaClass): array
     {
-        $ref        = new ReflectionClass($schemaClass);
-        $modelName  = preg_replace('/Schema$/', '', class_basename($schemaClass));
-        $modelFqcn  = "App\\Models\\{$modelName}";
-        $varName    = Str::camel($modelName);           // product
-        $routeName  = Str::snake(Str::pluralStudly($modelName)); // products
-        $viewPrefix = Str::snake($modelName);           // product
+        $ref = new ReflectionClass($schemaClass);
+        $modelName = preg_replace('/Schema$/', '', class_basename($schemaClass));
+        $modelFqcn = "App\\Models\\{$modelName}";
+        $varName = Str::camel($modelName);
+        $routeName = Str::snake(Str::pluralStudly($modelName));
+        $viewPrefix = Str::snake($modelName);
 
-        // Table metadata
-        $tableAttrs  = $ref->getAttributes(Table::class);
+        $tableAttrs = $ref->getAttributes(Table::class);
         $softDeletes = $tableAttrs ? $tableAttrs[0]->newInstance()->softDeletes : false;
 
-        // Fillable fields — split into FK fields and regular fields
-        // FK fields (BelongsTo/ForeignSchema) should not be sent via API POST
-        // as they're typically set server-side or via route binding.
-        $fillable      = [];
-        $fillableNoFk  = [];
+        $fillable = [];
+        $fillableNoFk = [];
+        $requiredFkFields = []; // ← new: ['role_id' => 'App\\Models\\Role']
 
         foreach ($ref->getProperties() as $prop) {
-            if (! $prop->getAttributes(Fillable::class)) continue;
+            if (! $prop->getAttributes(Fillable::class)) {
+                continue;
+            }
 
-            $name  = $prop->getName();
-            $isFk  = ! empty($prop->getAttributes(BelongsTo::class))
-                || ! empty($prop->getAttributes(ForeignSchema::class));
+            $name = $prop->getName();
+            $isBt = ! empty($prop->getAttributes(BelongsTo::class));
+            $isFs = ! empty($prop->getAttributes(ForeignSchema::class));
+            $isFk = $isBt || $isFs;
 
             $fillable[] = $name;
+
             if (! $isFk) {
                 $fillableNoFk[] = $name;
             }
+
+            // Collect non-nullable FK fields that are NOT user FKs
+            if ($isFk && ! in_array($name, ['user_id', 'author_id', 'created_by', 'owner_id'])) {
+                // Resolve the related model FQCN
+                $relatedModel = null;
+                if ($isBt) {
+                    $rel = $prop->getAttributes(BelongsTo::class)[0]->newInstance();
+                    $relatedModel = 'App\\Models\\'.preg_replace('/Schema$/', '', class_basename($rel->related));
+                } elseif ($isFs) {
+                    $rel = $prop->getAttributes(ForeignSchema::class)[0]->newInstance();
+                    $relatedModel = 'App\\Models\\'.preg_replace('/Schema$/', '', class_basename($rel->schema));
+                }
+
+                // Check nullable — non-nullable required FK needs to be in the payload
+                $colAttrs = $prop->getAttributes(Column::class);
+                $nullable = $colAttrs ? $colAttrs[0]->newInstance()->nullable : true;
+
+                if (! $nullable && $relatedModel) {
+                    $requiredFkFields[$name] = $relatedModel;
+                }
+            }
         }
 
-        // Relations
-        $hasOne        = [];
-        $hasMany       = [];
-        $belongsTo     = [];
+        $hasOne = [];
+        $hasMany = [];
+        $belongsTo = [];
         $belongsToMany = [];
 
         foreach ($ref->getProperties() as $prop) {
@@ -241,8 +267,7 @@ class SchemaController extends Command
 
         $allRelations = array_merge($hasOne, $hasMany, $belongsTo, $belongsToMany);
 
-        // Detect user FK for actingAs in controller tests
-        $hasUserFk   = false;
+        $hasUserFk = false;
         $userFkModel = null;
         foreach ($ref->getProperties() as $prop) {
             $name = $prop->getName();
@@ -251,52 +276,53 @@ class SchemaController extends Command
                     || ! empty($prop->getAttributes(ForeignSchema::class)))
             ) {
                 $hasUserFk = true;
-                $btAttrs   = $prop->getAttributes(BelongsTo::class);
-                $fsAttrs   = $prop->getAttributes(ForeignSchema::class);
+                $btAttrs = $prop->getAttributes(BelongsTo::class);
+                $fsAttrs = $prop->getAttributes(ForeignSchema::class);
                 if (! empty($btAttrs)) {
-                    $rel         = $btAttrs[0]->newInstance()->related;
-                    $userFkModel = 'App\\Models\\' . preg_replace('/Schema$/', '', class_basename($rel));
+                    $rel = $btAttrs[0]->newInstance()->related;
+                    $userFkModel = 'App\\Models\\'.preg_replace('/Schema$/', '', class_basename($rel));
                 } elseif (! empty($fsAttrs)) {
-                    $rel         = $fsAttrs[0]->newInstance()->schema;
-                    $userFkModel = 'App\\Models\\' . preg_replace('/Schema$/', '', class_basename($rel));
+                    $rel = $fsAttrs[0]->newInstance()->schema;
+                    $userFkModel = 'App\\Models\\'.preg_replace('/Schema$/', '', class_basename($rel));
                 }
                 break;
             }
         }
 
         return [
-            'schemaClass'     => $schemaClass,
-            'modelName'       => $modelName,
-            'modelFqcn'       => $modelFqcn,
-            'varName'         => $varName,
-            'routeName'       => $routeName,
-            'viewPrefix'      => $viewPrefix,
-            'controllerClass' => $modelName . 'Controller',
-            'softDeletes'     => $softDeletes,
-            'fillable'        => $fillable,
-            'fillableNoFk'    => $fillableNoFk,
-            'hasUserFk'       => $hasUserFk,
-            'userFkModel'     => $userFkModel,
-            'hasOne'          => $hasOne,
-            'hasMany'         => $hasMany,
-            'belongsTo'       => $belongsTo,
-            'belongsToMany'   => $belongsToMany,
-            'allRelations'    => $allRelations,
+            'schemaClass' => $schemaClass,
+            'modelName' => $modelName,
+            'modelFqcn' => $modelFqcn,
+            'varName' => $varName,
+            'routeName' => $routeName,
+            'viewPrefix' => $viewPrefix,
+            'controllerClass' => $modelName.'Controller',
+            'softDeletes' => $softDeletes,
+            'fillable' => $fillable,
+            'fillableNoFk' => $fillableNoFk,
+            'requiredFkFields' => $requiredFkFields, // ← new
+            'hasUserFk' => $hasUserFk,
+            'userFkModel' => $userFkModel,
+            'hasOne' => $hasOne,
+            'hasMany' => $hasMany,
+            'belongsTo' => $belongsTo,
+            'belongsToMany' => $belongsToMany,
+            'allRelations' => $allRelations,
         ];
     }
-
     // -------------------------------------------------------------------------
     // Controller generation
     // -------------------------------------------------------------------------
 
     private function writeController(array $meta, bool $blade): ?string
     {
-        $dir  = app_path('Http/Controllers');
-        $path = $dir . '/' . $meta['controllerClass'] . '.php';
+        $dir = app_path('Http/Controllers');
+        $path = $dir.'/'.$meta['controllerClass'].'.php';
 
         if (file_exists($path) && ! $this->option('force')) {
             if (! $this->confirm("Controller already exists at [{$path}]. Overwrite?")) {
                 $this->warn('Aborted.');
+
                 return null;
             }
         }
@@ -320,27 +346,27 @@ class SchemaController extends Command
 
     private function buildApiController(array $meta): string
     {
-        $m           = $meta['modelName'];
-        $var         = $meta['varName'];
-        $model       = $meta['modelFqcn'];
-        $controller  = $meta['controllerClass'];
-        $route       = $meta['routeName'];
-        $fillable    = $this->renderOnly($meta['fillable']);
-        $relations   = $this->renderRelationsArray($meta['allRelations']);
+        $m = $meta['modelName'];
+        $var = $meta['varName'];
+        $model = $meta['modelFqcn'];
+        $controller = $meta['controllerClass'];
+        $route = $meta['routeName'];
+        $fillable = $this->renderOnly($meta['fillable']);
+        $relations = $this->renderRelationsArray($meta['allRelations']);
         $softDeletes = $meta['softDeletes'];
-        $raw         = $this->option('raw');
+        $raw = $this->option('raw');
 
         $restoreMethod = $softDeletes ? $this->apiRestoreMethod($m, $var, $route, $raw) : '';
 
         if ($raw) {
-            $docblock  = "/**\n * {$controller}\n *\n * Add to routes/api.php:\n *   Route::apiResource('{$route}', {$controller}::class);"
-                . ($softDeletes ? "\n *   Route::patch('{$route}/{id}/restore', [{$controller}::class, 'restore']);" : '')
-                . "\n */";
+            $docblock = "/**\n * {$controller}\n *\n * Add to routes/api.php:\n *   Route::apiResource('{$route}', {$controller}::class);"
+                .($softDeletes ? "\n *   Route::patch('{$route}/{id}/restore', [{$controller}::class, 'restore']);" : '')
+                ."\n */";
             $classAttr = '';
             $spatieUse = '';
-            $attrs     = array_fill(0, 5, '');
+            $attrs = array_fill(0, 5, '');
         } else {
-            $docblock  = "/**\n * {$controller}\n *\n * Routes registered automatically via spatie/laravel-route-attributes.\n * Requires: composer require spatie/laravel-route-attributes\n */";
+            $docblock = "/**\n * {$controller}\n *\n * Routes registered automatically via spatie/laravel-route-attributes.\n * Requires: composer require spatie/laravel-route-attributes\n */";
             $classAttr = "\n#[Prefix('{$route}')]";
             $spatieUse = <<<USE
 
@@ -363,7 +389,7 @@ USE;
         [$attrIndex, $attrStore, $attrShow, $attrUpdate, $attrDestroy] = $attrs;
 
         // If schema has a user FK field, inject Auth::id() in store/update
-        $hasUserFk   = $meta['hasUserFk'] ?? false;
+        $hasUserFk = $meta['hasUserFk'] ?? false;
         $userFkField = null;
         if ($hasUserFk) {
             // Find the actual FK field name (user_id, author_id, etc.)
@@ -375,17 +401,17 @@ USE;
             }
         }
 
-        $authImport  = $hasUserFk && $userFkField ? "\nuse Illuminate\\Support\\Facades\\Auth;" : '';
-        $authMerge   = $hasUserFk && $userFkField
+        $authImport = $hasUserFk && $userFkField ? "\nuse Illuminate\\Support\\Facades\\Auth;" : '';
+        $authMerge = $hasUserFk && $userFkField
             ? "        \$data = array_merge(\$request->only({$fillable}), ['{$userFkField}' => Auth::id()]);\n"
             : '';
-        $createCall  = $hasUserFk && $userFkField
+        $createCall = $hasUserFk && $userFkField
             ? "\${$var} = {$m}::create(\$data);"          // $data already built above
             : "\${$var} = {$m}::create(\$request->only({$fillable}));";
         $updateMerge = $hasUserFk && $userFkField
             ? "        \$data = array_merge(\$request->only({$fillable}), ['{$userFkField}' => Auth::id()]);\n"
             : '';
-        $updateCall  = $hasUserFk && $userFkField
+        $updateCall = $hasUserFk && $userFkField
             ? "\${$var}->update(\$data);"
             : "\${$var}->update(\$request->only({$fillable}));";
 
@@ -462,27 +488,27 @@ PHP;
 
     private function buildBladeController(array $meta): string
     {
-        $m           = $meta['modelName'];
-        $var         = $meta['varName'];
-        $model       = $meta['modelFqcn'];
-        $controller  = $meta['controllerClass'];
-        $route       = $meta['routeName'];
-        $view        = $meta['viewPrefix'];
-        $fillable    = $this->renderOnly($meta['fillable']);
+        $m = $meta['modelName'];
+        $var = $meta['varName'];
+        $model = $meta['modelFqcn'];
+        $controller = $meta['controllerClass'];
+        $route = $meta['routeName'];
+        $view = $meta['viewPrefix'];
+        $fillable = $this->renderOnly($meta['fillable']);
         $softDeletes = $meta['softDeletes'];
-        $raw         = $this->option('raw');
+        $raw = $this->option('raw');
 
         $restoreMethod = $softDeletes ? $this->bladeRestoreMethod($m, $var, $route, $raw) : '';
 
         if ($raw) {
-            $docblock  = "/**\n * {$controller}\n *\n * Views: resources/views/{$view}/\n *\n * Add to routes/web.php:\n *   Route::resource('{$route}', {$controller}::class);"
-                . ($softDeletes ? "\n *   Route::patch('{$route}/{id}/restore', [{$controller}::class, 'restore']);" : '')
-                . "\n */";
+            $docblock = "/**\n * {$controller}\n *\n * Views: resources/views/{$view}/\n *\n * Add to routes/web.php:\n *   Route::resource('{$route}', {$controller}::class);"
+                .($softDeletes ? "\n *   Route::patch('{$route}/{id}/restore', [{$controller}::class, 'restore']);" : '')
+                ."\n */";
             $classAttr = '';
             $spatieUse = '';
-            $attrs     = array_fill(0, 7, '');
+            $attrs = array_fill(0, 7, '');
         } else {
-            $docblock  = "/**\n * {$controller}\n *\n * Views: resources/views/{$view}/\n * Routes registered automatically via spatie/laravel-route-attributes.\n */";
+            $docblock = "/**\n * {$controller}\n *\n * Views: resources/views/{$view}/\n * Routes registered automatically via spatie/laravel-route-attributes.\n */";
             $classAttr = "\n#[Prefix('{$route}')]";
             $spatieUse = <<<USE
 
@@ -598,26 +624,26 @@ PHP;
 
     private function writeViews(array $meta): array
     {
-        $view   = $meta['viewPrefix'];
-        $dir    = resource_path("views/{$view}");
-        $m      = $meta['modelName'];
-        $var    = $meta['varName'];
-        $route  = $meta['routeName'];
+        $view = $meta['viewPrefix'];
+        $dir = resource_path("views/{$view}");
+        $m = $meta['modelName'];
+        $var = $meta['varName'];
+        $route = $meta['routeName'];
 
         if (! is_dir($dir)) {
             mkdir($dir, 0755, true);
         }
 
         $views = [
-            'index'  => $this->viewIndex($meta),
+            'index' => $this->viewIndex($meta),
             'create' => $this->viewForm($meta, 'create'),
-            'edit'   => $this->viewForm($meta, 'edit'),
-            'show'   => $this->viewShow($meta),
+            'edit' => $this->viewForm($meta, 'edit'),
+            'show' => $this->viewShow($meta),
         ];
 
         $paths = [];
         foreach ($views as $name => $content) {
-            $path = $dir . '/' . $name . '.blade.php';
+            $path = $dir.'/'.$name.'.blade.php';
             if (! file_exists($path) || $this->option('force')) {
                 file_put_contents($path, $content);
                 $paths[] = $path;
@@ -631,10 +657,10 @@ PHP;
 
     private function viewIndex(array $meta): string
     {
-        $m     = $meta['modelName'];
-        $var   = $meta['varName'];
+        $m = $meta['modelName'];
+        $var = $meta['varName'];
         $route = $meta['routeName'];
-        $cols  = implode(', ', array_map(fn($f) => "{{ \${$var}->{$f} }}", array_slice($meta['fillable'], 0, 3)));
+        $cols = implode(', ', array_map(fn ($f) => "{{ \${$var}->{$f} }}", array_slice($meta['fillable'], 0, 3)));
 
         return <<<BLADE
 @extends('layouts.app')
@@ -688,15 +714,15 @@ BLADE;
 
     private function viewForm(array $meta, string $mode): string
     {
-        $m     = $meta['modelName'];
-        $var   = $meta['varName'];
+        $m = $meta['modelName'];
+        $var = $meta['varName'];
         $route = $meta['routeName'];
         $title = $mode === 'create' ? "Create {$m}" : "Edit {$m}";
         $action = $mode === 'create'
             ? "{{ route('{$route}.store') }}"
             : "{{ route('{$route}.update', \${$var}) }}";
         $method = $mode === 'edit' ? '@method(\'PUT\')' : '';
-        $old    = $mode === 'edit' ? ", \${$var}->{field}" : '';
+        $old = $mode === 'edit' ? ", \${$var}->{field}" : '';
 
         $fields = '';
         foreach ($meta['fillable'] as $field) {
@@ -732,8 +758,8 @@ BLADE;
 
     private function viewShow(array $meta): string
     {
-        $m     = $meta['modelName'];
-        $var   = $meta['varName'];
+        $m = $meta['modelName'];
+        $var = $meta['varName'];
         $route = $meta['routeName'];
 
         $rows = '';
@@ -816,8 +842,8 @@ PHP;
 
     private function writeControllerTest(array $meta, bool $blade): ?string
     {
-        $dir  = base_path('tests/Feature');
-        $path = $dir . '/' . $meta['controllerClass'] . 'Test.php';
+        $dir = base_path('tests/Feature');
+        $path = $dir.'/'.$meta['controllerClass'].'Test.php';
 
         if (! is_dir($dir)) {
             mkdir($dir, 0755, true);
@@ -834,60 +860,68 @@ PHP;
 
     private function buildControllerTest(array $meta, bool $blade): string
     {
-        $m           = $meta['modelName'];
-        $var         = $meta['varName'];
-        $model       = $meta['modelFqcn'];
-        $controller  = $meta['controllerClass'];
-        $route       = $meta['routeName'];
+        $m = $meta['modelName'];
+        $var = $meta['varName'];
+        $model = $meta['modelFqcn'];
+        $controller = $meta['controllerClass'];
+        $route = $meta['routeName'];
         $softDeletes = $meta['softDeletes'];
-        $fillable     = $meta['fillable'];
+        $fillable = $meta['fillable'];
         $fillableNoFk = $meta['fillableNoFk'] ?? $fillable;
-        $hasUserFk    = $meta['hasUserFk'] ?? false;
-        $userFkModel  = $meta['userFkModel'] ?? null;
+        $hasUserFk = $meta['hasUserFk'] ?? false;
+        $userFkModel = $meta['userFkModel'] ?? null;
+        $requiredFks = $meta['requiredFkFields'] ?? [];
 
-        // Check if a factory exists for this model
         $factoryClass = "Database\\Factories\\{$m}Factory";
-        $hasFactory   = class_exists($factoryClass);
+        $hasFactory = class_exists($factoryClass);
 
-        // When schema has a user FK, create a user and act as them.
-        // This ensures user_id is available server-side and the test is realistic.
-        $userSetup    = '';
-        $actingAs     = '';
-        $userImport   = '';
+        // User FK setup
+        $userSetup = '';
+        $actingAs = '';
+        $userImport = '';
         $createSuffix = '';
         if ($hasUserFk && $userFkModel) {
-            $userBase   = class_basename($userFkModel);
+            $userBase = class_basename($userFkModel);
             $userImport = "use {$userFkModel};";
-            $userSetup  = "\n        \$user = {$userBase}::factory()->create();";
-            $actingAs   = "\n        \$this->actingAs(\$user);";
-            // Pass user FK to factory so it uses the created user
-            $createSuffix = "->for(\$user)";
+            $userSetup = "\n        \$user = {$userBase}::factory()->create();";
+            $actingAs = "\n        \$this->actingAs(\$user);";
+            $createSuffix = '->for($user)';
         }
 
-        // For create/show/delete — just create a persisted instance
+        // Required FK setup — e.g. $role = Role::factory()->create();
+        $fkImports = '';
+        $fkSetup = '';
+        $fkInject = '';
+        foreach ($requiredFks as $fkField => $fkModelFqcn) {
+            $fkBase = class_basename($fkModelFqcn);
+            $fkVar = Str::camel($fkBase);
+            $fkImports .= "use {$fkModelFqcn};\n";
+            $fkSetup .= "\n        \${$fkVar} = {$fkBase}::factory()->create();";
+            $fkInject .= "\n        \$data['{$fkField}'] = \${$fkVar}->id;";
+        }
+
         $createData = $hasFactory
             ? "{$m}::factory(){$createSuffix}->create()"
             : "{$m}::create(\$this->createData())";
 
-        // For store/update POST data — only send non-FK fillable fields.
-        $postFields   = ! empty($fillableNoFk) ? $fillableNoFk : $fillable;
-        $fillableList = implode(', ', array_map(fn($f) => "'{$f}'", $postFields));
-        $makeData     = $hasFactory
+        $postFields = ! empty($fillableNoFk) ? $fillableNoFk : $fillable;
+        $fillableList = implode(', ', array_map(fn ($f) => "'{$f}'", $postFields));
+        $makeData = $hasFactory
             ? "Arr::only({$m}::factory()->make()->toArray(), [{$fillableList}])"
-            : "\$this->createData()";
+            : '$this->createData()';
 
         if (empty($postFields)) {
-            $makeData = $hasFactory ? "{$m}::factory()->raw()" : "\$this->createData()";
+            $makeData = $hasFactory ? "{$m}::factory()->raw()" : '$this->createData()';
         }
 
-        // destroy assertion differs: soft-delete keeps row in DB
         $destroyAssertion = $softDeletes
             ? "\$this->assertSoftDeleted((new {$m})->getTable(), ['id' => \${$var}->id]);"
             : "\$this->assertDatabaseMissing((new {$m})->getTable(), ['id' => \${$var}->id]);";
 
-        $softDeleteTests = $softDeletes ? $this->buildSoftDeleteApiTests($m, $var, $route, $createData, $userSetup, $actingAs) : '';
+        $softDeleteTests = $softDeletes
+            ? $this->buildSoftDeleteApiTests($m, $var, $route, $createData, $userSetup, $actingAs)
+            : '';
 
-        // Helper method for createData fallback (when no factory)
         $createDataHelper = $hasFactory ? '' : <<<HELPER
 
     private function createData(): array
@@ -895,6 +929,10 @@ PHP;
         return []; // Fill in with valid {$m} data
     }
 HELPER;
+
+        // Combine all per-test setup lines
+        $storeSetup = $userSetup.$fkSetup.$actingAs;
+        $updateSetup = $userSetup.$fkSetup.$actingAs;
 
         return <<<PHP
 <?php
@@ -904,7 +942,7 @@ namespace Tests\Feature;
 use Tests\TestCase;
 use {$model};
 {$userImport}
-use Illuminate\Foundation\Testing\RefreshDatabase;
+{$fkImports}use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Arr;
 use PHPUnit\Framework\Attributes\Test;
 
@@ -937,8 +975,8 @@ class {$controller}Test extends TestCase
 
     #[Test]
     public function store_creates_a_new_{$var}(): void
-    {{$userSetup}{$actingAs}
-        \$data = {$makeData};
+    {{$storeSetup}
+        \$data = {$makeData};{$fkInject}
 
         \$response = \$this->postJson('/{$route}', \$data);
 
@@ -979,9 +1017,9 @@ class {$controller}Test extends TestCase
 
     #[Test]
     public function update_modifies_an_existing_{$var}(): void
-    {{$userSetup}{$actingAs}
+    {{$updateSetup}
         \${$var}  = {$createData};
-        \$data = {$makeData};
+        \$data = {$makeData};{$fkInject}
 
         \$response = \$this->putJson("/{$route}/{\${$var}->id}", \$data);
 
@@ -1031,22 +1069,31 @@ PHP;
 
     private function renderOnly(array $fillable): string
     {
-        if (empty($fillable)) return '[]';
-        $items = implode(', ', array_map(fn($f) => "'{$f}'", $fillable));
+        if (empty($fillable)) {
+            return '[]';
+        }
+        $items = implode(', ', array_map(fn ($f) => "'{$f}'", $fillable));
+
         return "[{$items}]";
     }
 
     private function renderRelationsArray(array $relations): string
     {
-        if (empty($relations)) return '';
-        $items = implode(', ', array_map(fn($r) => "'{$r}'", $relations));
+        if (empty($relations)) {
+            return '';
+        }
+        $items = implode(', ', array_map(fn ($r) => "'{$r}'", $relations));
+
         return "->load([{$items}])";
     }
 
     private function renderLoadCall(array $meta): string
     {
-        if (empty($meta['allRelations'])) return '';
-        $items = implode(', ', array_map(fn($r) => "'{$r}'", $meta['allRelations']));
+        if (empty($meta['allRelations'])) {
+            return '';
+        }
+        $items = implode(', ', array_map(fn ($r) => "'{$r}'", $meta['allRelations']));
+
         return "->load([{$items}])";
     }
 
@@ -1055,19 +1102,22 @@ PHP;
         // Add when() filter for each BelongsTo FK field
         $lines = '';
         foreach ($meta['belongsTo'] as $rel) {
-            $fk = $rel . '_id';
+            $fk = $rel.'_id';
             $lines .= "\n            ->when(\$request->filled('{$fk}'), fn (\$q) => \$q->where('{$fk}', \$request->{$fk}))";
         }
+
         return $lines;
     }
 
     private function renderBelongsToManySync(array $meta, string $var): string
     {
-        if (empty($meta['belongsToMany'])) return '';
+        if (empty($meta['belongsToMany'])) {
+            return '';
+        }
 
         $lines = "\n";
         foreach ($meta['belongsToMany'] as $rel) {
-            $ids = Str::singular($rel) . '_ids';
+            $ids = Str::singular($rel).'_ids';
             $lines .= "        if (\$request->has('{$ids}')) {\n";
             $lines .= "            \${$var}->{$rel}()->sync(\$request->{$ids});\n";
             $lines .= "        }\n";
@@ -1078,13 +1128,17 @@ PHP;
 
     private function restoreRouteComment(string $route, string $controller, bool $softDeletes): string
     {
-        if (! $softDeletes) return '';
+        if (! $softDeletes) {
+            return '';
+        }
+
         return "\n *   Route::patch('{$route}/{id}/restore', [{$controller}::class, 'restore']);";
     }
 
     private function phpArr(array $items): string
     {
-        $quoted = implode(', ', array_map(fn($i) => "'{$i}'", $items));
+        $quoted = implode(', ', array_map(fn ($i) => "'{$i}'", $items));
+
         return "[{$quoted}]";
     }
 
@@ -1094,7 +1148,7 @@ PHP;
 
     private function findSchemaFiles(string $dir): array
     {
-        $files    = [];
+        $files = [];
         $iterator = new \RecursiveIteratorIterator(
             new \RecursiveDirectoryIterator($dir, \RecursiveDirectoryIterator::SKIP_DOTS)
         );
@@ -1112,12 +1166,12 @@ PHP;
 
     private function fileToClass(string $filePath): string
     {
-        $appPath  = rtrim(app_path(), DIRECTORY_SEPARATOR);
+        $appPath = rtrim(app_path(), DIRECTORY_SEPARATOR);
         $relative = ltrim(str_replace($appPath, '', $filePath), DIRECTORY_SEPARATOR);
         $relative = str_replace(DIRECTORY_SEPARATOR, '\\', $relative);
         $relative = preg_replace('/\.php$/', '', $relative);
 
-        return 'App\\' . $relative;
+        return 'App\\'.$relative;
     }
 
     // -------------------------------------------------------------------------
@@ -1127,20 +1181,24 @@ PHP;
     private function expandClass(string $input): string
     {
         $input = str_replace('/', '\\', $input);
-        return str_contains($input, '\\') ? $input : 'App\\Schema\\' . $input;
+
+        return str_contains($input, '\\') ? $input : 'App\\Schema\\'.$input;
     }
 
     private function resolveClass(string $class): void
     {
-        if (class_exists($class)) return;
+        if (class_exists($class)) {
+            return;
+        }
 
         $relative = str_replace('\\', '/', ltrim(
-                preg_replace('/^App/', '', $class), '\\'
-            )) . '.php';
+            preg_replace('/^App/', '', $class), '\\'
+        )).'.php';
 
-        foreach ([app_path($relative), base_path('app/' . ltrim($relative, '/'))] as $path) {
+        foreach ([app_path($relative), base_path('app/'.ltrim($relative, '/'))] as $path) {
             if (file_exists($path)) {
                 require_once $path;
+
                 return;
             }
         }

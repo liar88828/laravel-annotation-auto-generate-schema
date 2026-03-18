@@ -3,8 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Role;
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Spatie\RouteAttributes\Attributes\Delete;
 use Spatie\RouteAttributes\Attributes\Get;
@@ -28,8 +28,7 @@ class RoleController extends Controller
     public function index(Request $request): JsonResponse
     {
         $roles = Role::query()
-            ->when($request->filled('search'), fn ($q) =>
-                $q->where('id', 'like', "%{$request->search}%")
+            ->when($request->filled('search'), fn ($q) => $q->where('id', 'like', "%{$request->search}%")
             )
             ->when($request->filled('department_id'), fn ($q) => $q->where('department_id', $request->department_id))
             ->latest()
@@ -91,7 +90,6 @@ class RoleController extends Controller
 
         return response()->json(['message' => 'Role deleted.']);
     }
-
 
     // ── PATCH /roles/restore/{id} ───────────────────────────────────────────
 

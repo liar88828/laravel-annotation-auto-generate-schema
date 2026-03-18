@@ -2,13 +2,14 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use App\Attributes\Model\UsesSchema;
-use App\Traits\HasSchema;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Schema\ArticleSchema;
-use App\Models\User;
+use App\Traits\HasSchema;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
+
 #[UsesSchema(ArticleSchema::class)]
 class Article extends Model
 {
@@ -17,7 +18,7 @@ class Article extends Model
     protected $table = 'articles';
 
     protected $fillable = [
-        'user_id',
+        'role_id',
         'title',
         'slug',
         'content',
@@ -30,8 +31,9 @@ class Article extends Model
         'published_at' => 'datetime',
         'views' => 'integer',
     ];
-    public function user(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+
+    public function role(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\User::class);
+        return $this->belongsTo(Role::class);
     }
 }

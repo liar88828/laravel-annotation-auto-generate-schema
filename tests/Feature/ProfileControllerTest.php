@@ -2,12 +2,12 @@
 
 namespace Tests\Feature;
 
-use Tests\TestCase;
 use App\Models\Profile;
-
+use App\Models\Role;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Arr;
 use PHPUnit\Framework\Attributes\Test;
+use Tests\TestCase;
 
 /**
  * ProfileControllerTest
@@ -39,7 +39,9 @@ class ProfileControllerTest extends TestCase
     #[Test]
     public function store_creates_a_new_profile(): void
     {
+        $role = Role::factory()->create();
         $data = Arr::only(Profile::factory()->make()->toArray(), ['bio', 'avatar', 'phone', 'address', 'birth_date']);
+        $data['role_id'] = $role->id;
 
         $response = $this->postJson('/profiles', $data);
 
@@ -81,8 +83,10 @@ class ProfileControllerTest extends TestCase
     #[Test]
     public function update_modifies_an_existing_profile(): void
     {
-        $profile  = Profile::factory()->create();
+        $role = Role::factory()->create();
+        $profile = Profile::factory()->create();
         $data = Arr::only(Profile::factory()->make()->toArray(), ['bio', 'avatar', 'phone', 'address', 'birth_date']);
+        $data['role_id'] = $role->id;
 
         $response = $this->putJson("/profiles/{$profile->id}", $data);
 
@@ -101,5 +105,4 @@ class ProfileControllerTest extends TestCase
 
         $this->assertDatabaseMissing((new Profile)->getTable(), ['id' => $profile->id]);
     }
-
 }

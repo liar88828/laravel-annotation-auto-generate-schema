@@ -2,25 +2,25 @@
 
 namespace App\Support;
 
-use ReflectionClass;
-use App\Attributes\Migration\Table;
-use App\Attributes\Migration\Column;
-use App\Attributes\Migration\PrimaryKey;
-use App\Attributes\Migration\ForeignKey;
 use App\Attributes\Migration\BelongsTo as BelongsToAttr;
+use App\Attributes\Migration\Column;
 use App\Attributes\Migration\ForeignSchema as ForeignSchemaAttr;
+use App\Attributes\Migration\PrimaryKey;
+use App\Attributes\Migration\Table;
+use App\Attributes\Model\Cast;
 use App\Attributes\Model\EloquentModel;
 use App\Attributes\Model\Fillable;
 use App\Attributes\Model\Hidden;
-use App\Attributes\Model\Cast;
-use App\Attributes\Validation\Required;
-use App\Attributes\Validation\Email;
-use App\Attributes\Validation\Unique;
-use App\Attributes\Validation\In;
-use App\Attributes\Validation\Min;
-use App\Attributes\Validation\Max;
-use App\Attributes\Validation\Uuid;
 use App\Attributes\Validation\Confirmed;
+use App\Attributes\Validation\Email;
+use App\Attributes\Validation\In;
+use App\Attributes\Validation\Max;
+use App\Attributes\Validation\Min;
+use App\Attributes\Validation\Required;
+use App\Attributes\Validation\Unique;
+use App\Attributes\Validation\Uuid;
+use Illuminate\Support\Str;
+use ReflectionClass;
 
 /**
  * SchemaTestGenerator
@@ -50,10 +50,10 @@ class SchemaTestGenerator
 
     public static function write(string $schemaClass, array $options = []): ?string
     {
-        $ref       = new ReflectionClass($schemaClass);
+        $ref = new ReflectionClass($schemaClass);
         $modelName = preg_replace('/Schema$/', '', $ref->getShortName());
-        $dir       = base_path('tests/Unit');
-        $path      = $dir . '/' . $modelName . 'Test.php';
+        $dir = base_path('tests/Unit');
+        $path = $dir.'/'.$modelName.'Test.php';
 
         if (! is_dir($dir)) {
             mkdir($dir, 0755, true);
@@ -77,19 +77,19 @@ class SchemaTestGenerator
         $this->ref = new ReflectionClass($this->schemaClass);
 
         $includeMigrate = $options['migrate'] ?? true;
-        $includeModel   = $options['model']   ?? true;
+        $includeModel = $options['model'] ?? true;
 
-        $modelName   = preg_replace('/Schema$/', '', $this->ref->getShortName());
-        $tableAttr   = $this->classAttr(Table::class);
-        $tableName   = $tableAttr?->name ?? \Illuminate\Support\Str::snake(\Illuminate\Support\Str::plural($modelName));
+        $modelName = preg_replace('/Schema$/', '', $this->ref->getShortName());
+        $tableAttr = $this->classAttr(Table::class);
+        $tableName = $tableAttr?->name ?? Str::snake(Str::plural($modelName));
         $softDeletes = $tableAttr?->softDeletes ?? false;
-        $modelFqcn   = $this->resolveModelFqcn();
-        $modelBase   = class_basename($modelFqcn);
+        $modelFqcn = $this->resolveModelFqcn();
+        $modelBase = class_basename($modelFqcn);
 
-        $columns     = $this->collectColumns();
-        $fillable    = $this->collectFillable();
-        $hidden      = $this->collectHidden();
-        $casts       = $this->collectCasts();
+        $columns = $this->collectColumns();
+        $fillable = $this->collectFillable();
+        $hidden = $this->collectHidden();
+        $casts = $this->collectCasts();
         $validations = $this->collectValidationInfo();
 
         $methods = [];
@@ -144,9 +144,9 @@ class SchemaTestGenerator
             }
         }
 
-        $body    = implode(PHP_EOL . PHP_EOL, $methods);
+        $body = implode(PHP_EOL.PHP_EOL, $methods);
         $helpers = $this->buildHelperMethods($validations, $modelBase);
-        $useStr  = $this->buildUses($modelFqcn, $softDeletes);
+        $useStr = $this->buildUses($modelFqcn, $softDeletes);
 
         return <<<PHP
 <?php
@@ -338,7 +338,7 @@ PHP;
 
     private function testConfirmedValidation(string $field): string
     {
-        $confirmation = $field . '_confirmation';
+        $confirmation = $field.'_confirmation';
 
         return <<<PHP
     #[Test]
@@ -440,8 +440,8 @@ PHP;
 
     private function buildHelperMethods(array $validations, string $model): string
     {
-        $factoryClass  = "Database\\Factories\\{$model}Factory";
-        $hasFactory    = class_exists($factoryClass);
+        $factoryClass = "Database\\Factories\\{$model}Factory";
+        $hasFactory = class_exists($factoryClass);
 
         // validData still uses hardcoded values because it's used for validation
         // edge-case tests (invalid email, wrong status, etc.) and needs predictable
@@ -491,12 +491,12 @@ PHP;
             if ($info['isFk'] ?? false) {
                 continue;
             }
-            $lines[] = "            '{$field}' => " . $this->fakeValueFor($field, $info) . ',';
+            $lines[] = "            '{$field}' => ".$this->fakeValueFor($field, $info).',';
         }
 
         // Add confirmation fields (e.g. password_confirmation)
         foreach ($validations['confirmed'] as $field) {
-            $value   = $this->fakeValueFor($field, $validations['fields'][$field] ?? []);
+            $value = $this->fakeValueFor($field, $validations['fields'][$field] ?? []);
             $lines[] = "            '{$field}_confirmation' => {$value},";
         }
 
@@ -508,7 +508,7 @@ PHP;
         // Confirmation fields (e.g. password_confirmation) are never in the factory
         $confirmLines = [];
         foreach ($validations['confirmed'] as $field) {
-            $value          = $this->fakeValueFor($field, $validations['fields'][$field] ?? []);
+            $value = $this->fakeValueFor($field, $validations['fields'][$field] ?? []);
             $confirmLines[] = "            '{$field}_confirmation' => {$value},";
         }
 
@@ -559,7 +559,7 @@ PHP;
         $lines = [];
 
         foreach ($validations['fields'] as $field => $info) {
-            $lines[] = "            '{$field}' => " . $this->fakeValueFor($field, $info) . ',';
+            $lines[] = "            '{$field}' => ".$this->fakeValueFor($field, $info).',';
         }
 
         $body = implode(PHP_EOL, $lines);
@@ -582,7 +582,7 @@ PHP;
     private function fakeValueFor(string $field, array $info): string
     {
         if ($info['uuid'] ?? false) {
-            return "(string) Str::uuid()";
+            return '(string) Str::uuid()';
         }
 
         if ($info['email'] ?? false) {
@@ -590,7 +590,7 @@ PHP;
         }
 
         if (! empty($info['in'])) {
-            return "'" . $info['in'][0] . "'";
+            return "'".$info['in'][0]."'";
         }
 
         if ($field === 'password') {
@@ -602,11 +602,11 @@ PHP;
         }
 
         if (in_array($info['colType'] ?? '', ['date', 'datetime', 'timestamp'])) {
-            return "now()->toDateString()";
+            return 'now()->toDateString()';
         }
 
         if (in_array($info['colType'] ?? '', ['json', 'jsonb'])) {
-            return "[]";
+            return '[]';
         }
 
         if (in_array($info['colType'] ?? '', [
@@ -614,12 +614,14 @@ PHP;
             'smallInteger', 'tinyInteger', 'unsignedTinyInteger', 'unsignedSmallInteger',
         ])) {
             $min = $info['min'] ?? 1;
+
             return (string) max(1, (int) $min);
         }
 
         // Decimal / float — return a numeric value respecting min constraint
         if (in_array($info['colType'] ?? '', ['decimal', 'float', 'double'])) {
             $min = $info['min'] ?? 0;
+
             return number_format(max(0, (float) $min) + 1.00, 2, '.', '');
         }
 
@@ -628,7 +630,8 @@ PHP;
         }
 
         $min = $info['min'] ?? 2;
-        return "'" . str_repeat('a', max(2, (int) $min)) . "'";
+
+        return "'".str_repeat('a', max(2, (int) $min))."'";
     }
 
     // -------------------------------------------------------------------------
@@ -638,6 +641,7 @@ PHP;
     private function classAttr(string $attrClass): ?object
     {
         $attrs = $this->ref->getAttributes($attrClass);
+
         return $attrs ? $attrs[0]->newInstance() : null;
     }
 
@@ -648,7 +652,7 @@ PHP;
         foreach ($this->ref->getProperties() as $prop) {
             if (! empty($prop->getAttributes(Column::class))) {
                 $colAttr = $prop->getAttributes(Column::class)[0]->newInstance();
-                $cols[]  = $colAttr->name ?? $prop->getName();
+                $cols[] = $colAttr->name ?? $prop->getName();
             }
         }
 
@@ -686,40 +690,43 @@ PHP;
                 $casts[$prop->getName()] = $attrs[0]->newInstance()->as;
             }
         }
+
         return $casts;
     }
 
     private function collectValidationInfo(): array
     {
-        $required  = [];
-        $email     = [];
-        $unique    = [];
-        $in        = [];
-        $uuid      = [];
+        $required = [];
+        $email = [];
+        $unique = [];
+        $in = [];
+        $uuid = [];
         $confirmed = [];
-        $fields    = [];
+        $fields = [];
 
         foreach ($this->ref->getProperties() as $prop) {
-            if (! empty($prop->getAttributes(PrimaryKey::class))) continue;
+            if (! empty($prop->getAttributes(PrimaryKey::class))) {
+                continue;
+            }
 
-            $name     = $prop->getName();
+            $name = $prop->getName();
             $colAttrs = $prop->getAttributes(Column::class);
-            $colType  = $colAttrs ? $colAttrs[0]->newInstance()->type : 'string';
+            $colType = $colAttrs ? $colAttrs[0]->newInstance()->type : 'string';
             $nullable = $colAttrs ? $colAttrs[0]->newInstance()->nullable : false;
 
             $minAttr = $prop->getAttributes(Min::class);
             $maxAttr = $prop->getAttributes(Max::class);
 
             $fieldInfo = [
-                'colType'  => $colType,
+                'colType' => $colType,
                 'nullable' => $nullable,
-                'min'      => $minAttr ? $minAttr[0]->newInstance()->min : null,
-                'max'      => $maxAttr ? $maxAttr[0]->newInstance()->max : null,
-                'cast'     => $prop->getAttributes(Cast::class) ? $prop->getAttributes(Cast::class)[0]->newInstance()->as : null,
-                'uuid'     => false,
-                'email'    => false,
-                'in'       => [],
-                'isFk'     => ! empty($prop->getAttributes(BelongsToAttr::class))
+                'min' => $minAttr ? $minAttr[0]->newInstance()->min : null,
+                'max' => $maxAttr ? $maxAttr[0]->newInstance()->max : null,
+                'cast' => $prop->getAttributes(Cast::class) ? $prop->getAttributes(Cast::class)[0]->newInstance()->as : null,
+                'uuid' => false,
+                'email' => false,
+                'in' => [],
+                'isFk' => ! empty($prop->getAttributes(BelongsToAttr::class))
                     || ! empty($prop->getAttributes(ForeignSchemaAttr::class)),
             ];
 
@@ -727,21 +734,21 @@ PHP;
                 $required[] = $name;
             }
             if (! empty($prop->getAttributes(Email::class))) {
-                $email[]            = $name;
+                $email[] = $name;
                 $fieldInfo['email'] = true;
             }
             if (! empty($prop->getAttributes(Unique::class))) {
                 $unique[] = $name;
             }
             if (! empty($prop->getAttributes(In::class))) {
-                $inInstance      = $prop->getAttributes(In::class)[0]->newInstance();
-                $allowed         = $inInstance->allowed;
-                $in[]            = [$name, $allowed];
+                $inInstance = $prop->getAttributes(In::class)[0]->newInstance();
+                $allowed = $inInstance->allowed;
+                $in[] = [$name, $allowed];
                 $fieldInfo['in'] = $allowed;
             }
             if (! empty($prop->getAttributes(Uuid::class))) {
-                $uuid[]             = $name;
-                $fieldInfo['uuid']  = true;
+                $uuid[] = $name;
+                $fieldInfo['uuid'] = true;
             }
             if (! empty($prop->getAttributes(Confirmed::class))) {
                 $confirmed[] = $name;
@@ -771,6 +778,7 @@ PHP;
             return $attrs[0]->newInstance()->model;
         }
         $base = preg_replace('/Schema$/', '', $this->ref->getShortName());
+
         return "App\\Models\\{$base}";
     }
 

@@ -2,17 +2,17 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use App\Attributes\Model\UsesSchema;
-use App\Traits\HasSchema;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Schema\RoleSchema;
-use App\Models\Department;
-use App\Models\Profile;
-use App\Models\Article;
-use App\Models\History;
-use App\Models\Team;
+use App\Traits\HasSchema;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\SoftDeletes;
+
 #[UsesSchema(RoleSchema::class)]
 class Role extends Model
 {
@@ -32,30 +32,31 @@ class Role extends Model
     protected $casts = [
         'born_at' => 'date:Y-m-d',
     ];
-    public function department(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+
+    public function department(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\Department::class);
+        return $this->belongsTo(Department::class);
     }
 
-    public function profile(): \Illuminate\Database\Eloquent\Relations\HasOne
+    public function profile(): HasOne
     {
-        return $this->hasOne(\App\Models\Profile::class, 'role_id');
+        return $this->hasOne(Profile::class, 'role_id');
     }
 
-    public function articles(): \Illuminate\Database\Eloquent\Relations\HasMany
+    public function articles(): HasMany
     {
-        return $this->hasMany(\App\Models\Article::class, 'role_id');
+        return $this->hasMany(Article::class, 'role_id');
     }
 
-    public function history(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    public function history(): BelongsToMany
     {
-        return $this->belongsToMany(\App\Models\History::class, 'history_role', 'role_id', 'history_id')
+        return $this->belongsToMany(History::class, 'history_role', 'role_id', 'history_id')
             ->withTimestamps();
     }
 
-    public function teams(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    public function teams(): BelongsToMany
     {
-        return $this->belongsToMany(\App\Models\Team::class, 'team_role', 'role_id', 'team_id')
+        return $this->belongsToMany(Team::class, 'team_role', 'role_id', 'team_id')
             ->withPivot('joined_at');
     }
 }

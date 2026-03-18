@@ -2,12 +2,12 @@
 
 namespace Tests\Unit;
 
-use Tests\TestCase;
 use App\Models\Department;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Str;
+use Illuminate\Support\MessageBag;
 use PHPUnit\Framework\Attributes\Test;
+use Tests\TestCase;
 
 /**
  * DepartmentTest
@@ -28,24 +28,24 @@ class DepartmentTest extends TestCase
     #[Test]
     public function it_has_the_expected_columns(): void
     {
-        $this->assertTrue(Schema::hasColumn('departments', 'name'), "Column [name] missing.");
-        $this->assertTrue(Schema::hasColumn('departments', 'code'), "Column [code] missing.");
-        $this->assertTrue(Schema::hasColumn('departments', 'slug'), "Column [slug] missing.");
-        $this->assertTrue(Schema::hasColumn('departments', 'description'), "Column [description] missing.");
-        $this->assertTrue(Schema::hasColumn('departments', 'status'), "Column [status] missing.");
-        $this->assertTrue(Schema::hasColumn('departments', 'budget'), "Column [budget] missing.");
+        $this->assertTrue(Schema::hasColumn('departments', 'name'), 'Column [name] missing.');
+        $this->assertTrue(Schema::hasColumn('departments', 'code'), 'Column [code] missing.');
+        $this->assertTrue(Schema::hasColumn('departments', 'slug'), 'Column [slug] missing.');
+        $this->assertTrue(Schema::hasColumn('departments', 'description'), 'Column [description] missing.');
+        $this->assertTrue(Schema::hasColumn('departments', 'status'), 'Column [status] missing.');
+        $this->assertTrue(Schema::hasColumn('departments', 'budget'), 'Column [budget] missing.');
     }
 
     #[Test]
     public function model_fillable_is_resolved_from_schema(): void
     {
         $model = new Department;
-        $this->assertContains('name', $model->getFillable(), "[name] should be fillable.");
-        $this->assertContains('code', $model->getFillable(), "[code] should be fillable.");
-        $this->assertContains('slug', $model->getFillable(), "[slug] should be fillable.");
-        $this->assertContains('description', $model->getFillable(), "[description] should be fillable.");
-        $this->assertContains('status', $model->getFillable(), "[status] should be fillable.");
-        $this->assertContains('budget', $model->getFillable(), "[budget] should be fillable.");
+        $this->assertContains('name', $model->getFillable(), '[name] should be fillable.');
+        $this->assertContains('code', $model->getFillable(), '[code] should be fillable.');
+        $this->assertContains('slug', $model->getFillable(), '[slug] should be fillable.');
+        $this->assertContains('description', $model->getFillable(), '[description] should be fillable.');
+        $this->assertContains('status', $model->getFillable(), '[status] should be fillable.');
+        $this->assertContains('budget', $model->getFillable(), '[budget] should be fillable.');
     }
 
     #[Test]
@@ -66,14 +66,14 @@ class DepartmentTest extends TestCase
     public function validation_fails_when_required_fields_are_missing(): void
     {
         $errors = $this->schemaValidate([]);
-        $this->assertTrue($errors->has('name'), "[name] should fail required.");
-        $this->assertTrue($errors->has('code'), "[code] should fail required.");
+        $this->assertTrue($errors->has('name'), '[name] should fail required.');
+        $this->assertTrue($errors->has('code'), '[code] should fail required.');
     }
 
     #[Test]
     public function validation_fails_when_status_is_not_in_allowed_values(): void
     {
-        $data           = $this->validData();
+        $data = $this->validData();
         $data['status'] = '__invalid__';
 
         $errors = $this->schemaValidate($data);
@@ -92,7 +92,7 @@ class DepartmentTest extends TestCase
     #[Test]
     public function update_validation_ignores_own_record_in_unique_check(): void
     {
-        $model  = Department::create($this->createData());
+        $model = Department::create($this->createData());
         $errors = $this->schemaValidate(
             ['code' => $model->code],
             ignoreUniqueFor: ['code' => $model->id],
@@ -138,7 +138,7 @@ class DepartmentTest extends TestCase
         return Department::factory()->raw();
     }
 
-    private function schemaValidate(array $data, array $ignoreUniqueFor = [], bool $skipMissing = false): \Illuminate\Support\MessageBag
+    private function schemaValidate(array $data, array $ignoreUniqueFor = [], bool $skipMissing = false): MessageBag
     {
         return Department::schemaValidate($data, $ignoreUniqueFor, $skipMissing);
     }
