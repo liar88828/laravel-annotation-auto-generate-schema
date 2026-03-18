@@ -2,7 +2,6 @@
 
 namespace Database\Factories;
 
-use App\Models\Department;
 use App\Models\Role;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
@@ -23,12 +22,12 @@ class RoleFactory extends Factory
     public function definition(): array
     {
         return [
-            'public_id' => (string) Str::uuid(),
+            'public_id' => (string) \Illuminate\Support\Str::uuid(),
             'name' => fake()->name(),
             'status' => fake()->optional(0.8)->randomElement(['active', 'inactive', 'suspended']),
             'age' => fake()->boolean(80) ? fake()->numberBetween(18, 80) : null,
-            'born_at' => fake()->boolean(80) ? fake()->dateTime() : null,
-            'department_id' => fake()->boolean(80) ? Department::factory()->create()->getKey() : null,
+            'born_at' => fake()->boolean(80) ? fake()->dateTime()->format('Y-m-d H:i:s') : null,
+            'department_id' => fake()->boolean(80) ? \App\Models\Department::factory()->create()->getKey() : null,
         ];
     }
 

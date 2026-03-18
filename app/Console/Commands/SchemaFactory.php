@@ -426,7 +426,7 @@ class SchemaFactory extends Command
             in_array($lower, ['uuid', 'public_id', 'external_id']) => "(string) \Illuminate\Support\Str::uuid()",
             str_ends_with($lower, '_id') => null,    // let column type handler deal with it, wrap handled by $wrap
             str_starts_with($lower, 'is_') || str_starts_with($lower, 'has_') => 'fake()->boolean()',
-            str_ends_with($lower, '_at') => 'fake()->dateTime()',
+            str_ends_with($lower, '_at') => "fake()->dateTime()->format('Y-m-d H:i:s')",
             str_ends_with($lower, '_date') => 'fake()->date()',
             str_ends_with($lower, '_url') || str_ends_with($lower, '_link') => 'fake()->url()',
             str_ends_with($lower, '_email') => 'fake()->safeEmail()',

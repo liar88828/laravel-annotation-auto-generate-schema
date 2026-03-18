@@ -98,12 +98,65 @@ trait HasSchema
         $config = static::$pkConfigRegistry[static::class] ?? null;
 
         if ($config !== null) {
-            $this->primaryKey = $config['primaryKey'];
+            $this->primaryKey   = $config['primaryKey'];
             $this->incrementing = $config['incrementing'];
-            $this->keyType = $config['keyType'];
+            $this->keyType      = $config['keyType'];
         }
+
+        $this->applyFillableToInstance();
+        $this->applyCastsToInstance();  // ← add this
     }
 
+    private function applyCastsToInstance(): void
+    {
+        $schemaClass = static::resolveSchemaClass();
+        if ($schemaClass === null) {
+            return;
+        }
+
+        $ref   = new ReflectionClass($schemaClass);
+        $casts = [];
+
+        foreach ($ref->getProperties() as $prop) {
+            $attrs = $prop->getAttributes(Cast::class);
+            if ($attrs) {
+                $casts[$prop->getName()] = $attrs[0]->newInstance()->as;
+            }
+        }
+
+        if (! empty($casts)) {
+            // Merge schema casts with any casts already on the instance
+            // (model-level $casts take precedence via array_merge order)
+            $this->casts = array_merge($casts, $this->casts ?? []);
+        }
+    }
+    private function applyFillableToInstance(): void
+    {
+        $schemaClass = static::resolveSchemaClass();
+        if ($schemaClass === null) {
+            return;
+        }
+
+        $schemaRef = new ReflectionClass($schemaClass);
+        $modelRef  = new ReflectionClass(static::class);
+        $fillable  = [];
+
+        foreach ($schemaRef->getProperties() as $prop) {
+            if ($prop->getAttributes(Fillable::class)) {
+                $fillable[] = $prop->getName();
+            }
+        }
+
+        foreach ($modelRef->getProperties() as $prop) {
+            if ($prop->getAttributes(Fillable::class)) {
+                $fillable[] = $prop->getName();
+            }
+        }
+
+        if (! empty($fillable)) {
+            $this->fillable = array_values(array_unique($fillable));
+        }
+    }
     // -------------------------------------------------------------------------
     // Magic relation resolver
     // Intercepts calls to relation method names declared via schema annotations
@@ -275,10 +328,8 @@ trait HasSchema
         /** @var Table $table */
         $table = $attrs[0]->newInstance();
         $instance = new static;
-
-        if (! isset($instance->table)) {
-            $instance->table = $table->name;
-        }
+        // Always apply — don't skip if already set on the model
+        $instance->table = $table->name;
     }
 
     private static function applyPrimaryKeyFromSchema(ReflectionClass $ref): void
@@ -373,28 +424,32 @@ trait HasSchema
         ReflectionClass $schemaRef,
         ?ReflectionClass $modelRef = null,
     ): void {
-        $fillable = [];
-
-        foreach ($schemaRef->getProperties() as $prop) {
-            if ($prop->getAttributes(Fillable::class)) {
-                $fillable[] = $prop->getName();
-            }
-        }
-
-        if ($modelRef) {
-            foreach ($modelRef->getProperties() as $prop) {
-                if ($prop->getAttributes(Fillable::class)) {
-                    $fillable[] = $prop->getName();
-                }
-            }
-        }
-
-        if (! empty($fillable)) {
-            $instance = new static;
-            $instance->fillable = array_values(array_unique(
-                array_merge($instance->fillable ?? [], $fillable)
-            ));
-        }
+        // Fillable is now applied per-instance in initializeHasSchema()
+        // to ensure it's set before Builder::newModelInstance() calls fill().
+        // This boot-time method is kept as a no-op for compatibility.
+//        $fillable = [];
+//
+//        foreach ($schemaRef->getProperties() as $prop) {
+//            if ($prop->getAttributes(Fillable::class)) {
+//                $fillable[] = $prop->getName();
+//            }
+//        }
+//
+//        // Only merge model-level @Fillable annotations, NOT the model's $fillable array.
+//        // The schema is the single source of truth for fillable fields.
+//        if ($modelRef) {
+//            foreach ($modelRef->getProperties() as $prop) {
+//                if ($prop->getAttributes(Fillable::class)) {
+//                    $fillable[] = $prop->getName();
+//                }
+//            }
+//        }
+//
+//        if (! empty($fillable)) {
+//            $instance = new static;
+//            // Override completely — don't merge with model's hardcoded $fillable
+//            $instance->fillable = array_values(array_unique($fillable));
+//        }
     }
 
     private static function applyHiddenFromSchema(
@@ -427,19 +482,22 @@ trait HasSchema
 
     private static function applyCastsFromSchema(ReflectionClass $ref): void
     {
-        $casts = [];
-
-        foreach ($ref->getProperties() as $prop) {
-            $attrs = $prop->getAttributes(Cast::class);
-            if ($attrs) {
-                $casts[$prop->getName()] = $attrs[0]->newInstance()->as;
-            }
-        }
-
-        if (! empty($casts)) {
-            $instance = new static;
-            $instance->casts = array_merge($casts, $instance->casts ?? []);
-        }
+        // Casts are now applied per-instance in initializeHasSchema()
+        // via applyCastsToInstance() to ensure they are set before any
+        // fill() call, consistent with how fillable is handled.
+//        $casts = [];
+//
+//        foreach ($ref->getProperties() as $prop) {
+//            $attrs = $prop->getAttributes(Cast::class);
+//            if ($attrs) {
+//                $casts[$prop->getName()] = $attrs[0]->newInstance()->as;
+//            }
+//        }
+//
+//        if (! empty($casts)) {
+//            $instance = new static;
+//            $instance->casts = array_merge($casts, $instance->casts ?? []);
+//        }
     }
 
     private static function applyAppendsFromSchema(ReflectionClass $ref): void

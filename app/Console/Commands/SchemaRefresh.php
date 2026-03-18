@@ -215,7 +215,7 @@ class SchemaRefresh extends Command
             return null;
         }
 
-        return ModelGenerator::write($schemaClass);
+        return ModelGenerator::write($schemaClass, null, (bool) $this->option('raw'));
     }
 
     private function writeFactory(string $schemaClass): ?string

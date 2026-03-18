@@ -1,6 +1,6 @@
 # Laravel Schema Annotation System
 
-A PHP 8 attribute-driven system that turns a single schema class into the **single source of truth** for your Eloquent model's migration, validation, relations, and model configuration — no duplication, no generated files required at runtime.
+A PHP 8 attribute-driven system that turns a single schema class into the single source of truth for your Eloquent model's migration, validation, relations, and model configuration - no duplication, no generated files required at runtime.
 
 ---
 
@@ -9,9 +9,9 @@ A PHP 8 attribute-driven system that turns a single schema class into the **sing
 Instead of maintaining four separate files that all describe the same data:
 
 ```
-users migration     → column types, nullability, defaults, indexes
-UserRequest         → validation rules
-User model          → $fillable, $hidden, $casts, $appends, relations
+users migration     -> column types, nullability, defaults, indexes
+UserRequest         -> validation rules
+User model          -> $fillable, $hidden, $casts, $appends, relations
 ```
 
 You write one schema class:
@@ -55,25 +55,40 @@ class User extends Model
 
 ---
 
+## Highlights
+
+- `app/Console/Commands` - Artisan commands that generate migrations, relations, and models.
+- `app/Support` - Core generator engines and the schema validator.
+- `app/Traits` - Runtime wiring for models and migrations.
+- `app/Attributes` - Attribute definitions for migration, model, and validation metadata.
+- `app/Schema` - Schema classes that define your models in one place.
+
+---
+
 ## Directory Structure
 
 ```
 app/
-├── Attributes/
-│   ├── Migration/          Column definition & relation attributes
-│   ├── Model/              Model wiring attributes
-│   └── Validation/         Validation rule attributes
-├── Console/Commands/       Artisan commands
-├── Contracts/              ValidationRule interface
-├── Example/                UserSchema example
-├── Http/
-│   ├── Controllers/        UserController example
-│   └── routes_users.php    Route definitions
-├── Models/                 User model
-├── Support/                Generator engines & Validator
-├── Traits/                 HasSchema, RunsSchemaMigration
-├── database/migrations/    Annotation-driven migration files
-└── tests/Unit/             UserTest
+|-- Actions/
+|-- Attributes/
+|   |-- Migration/          Column definition and relation attributes
+|   |-- Model/              Model wiring attributes
+|   |-- Validation/         Validation rule attributes
+|-- Concerns/
+|-- Console/
+|   |-- Commands/           Artisan commands
+|-- Contracts/              ValidationRule interface
+|-- Example/                UserSchema example
+|-- Http/
+|   |-- Controllers/        UserController example
+|   |-- routes_users.php    Route definitions
+|-- Models/                 User model
+|-- Providers/
+|-- Schema/                 Schema classes
+|-- Support/                Generator engines and Validator
+|-- Traits/                 HasSchema, RunsSchemaMigration
+|-- database/migrations/    Annotation-driven migration files
+|-- tests/Unit/             UserTest
 ```
 
 ---
@@ -82,7 +97,7 @@ app/
 
 ### Migration Attributes
 
-Applied to the **schema class** to define the database structure.
+Applied to the schema class to define the database structure.
 
 #### Class-level
 
@@ -99,9 +114,9 @@ class UserSchema { }
 
 | Attribute | Description |
 |---|---|
-| `#[PrimaryKey(type)]` | Primary key column — `bigIncrements`, `uuid`, `ulid` |
+| `#[PrimaryKey(type)]` | Primary key column - `bigIncrements`, `uuid`, `ulid` |
 | `#[Column(type, length, nullable, default, name, index, unique, comment)]` | Regular column |
-| `#[ForeignKey(references, on, onDelete, onUpdate)]` | Foreign key constraint — pair with `#[Column]` |
+| `#[ForeignKey(references, on, onDelete, onUpdate)]` | Foreign key constraint - pair with `#[Column]` |
 
 ```php
 #[PrimaryKey(type: 'bigIncrements')]
@@ -123,19 +138,19 @@ public ?int $department_id;
 |---|---|---|
 | `#[HasOne(related, foreignKey, localKey, eager)]` | `hasOne()` | Related table |
 | `#[HasMany(related, foreignKey, localKey, eager)]` | `hasMany()` | Related table |
-| `#[BelongsTo(related, foreignKey, ownerKey, eager)]` | `belongsTo()` | **This** table |
+| `#[BelongsTo(related, foreignKey, ownerKey, eager)]` | `belongsTo()` | This table |
 | `#[BelongsToMany(related, pivotTable, foreignPivotKey, relatedPivotKey, withTimestamps, pivotColumns)]` | `belongsToMany()` | Pivot table |
 
 ```php
-// HasOne — FK on profiles table
+// HasOne - FK on profiles table
 #[HasOne(related: ProfileSchema::class, foreignKey: 'user_id')]
 public ProfileSchema $profile;
 
-// HasMany — FK on posts table
+// HasMany - FK on posts table
 #[HasMany(related: PostSchema::class, foreignKey: 'user_id')]
 public array $posts;
 
-// BelongsTo — FK on THIS table, pair with #[Column] + #[ForeignKey]
+// BelongsTo - FK on THIS table, pair with #[Column] + #[ForeignKey]
 #[Column(type: 'unsignedBigInteger', nullable: true)]
 #[ForeignKey(references: 'id', on: 'departments', onDelete: 'set null')]
 #[BelongsTo(related: DepartmentSchema::class)]
@@ -160,8 +175,8 @@ public array $roles;
 | Attribute | Rule |
 |---|---|
 | `#[Required]` | Not null, not empty string or array |
-| `#[Min(n)]` | String length / numeric value / array count ≥ n |
-| `#[Max(n)]` | String length / numeric value / array count ≤ n |
+| `#[Min(n)]` | String length / numeric value / array count >= n |
+| `#[Max(n)]` | String length / numeric value / array count <= n |
 | `#[Email]` | Valid email via `filter_var` |
 | `#[Numeric]` | Must be numeric |
 | `#[Regex('/pattern/')]` | Must match regex |
@@ -192,7 +207,7 @@ public ?string $status = 'active';
 | Attribute | Description |
 |---|---|
 | `#[EloquentModel(model, connection)]` | Declares which model this schema generates |
-| `#[UsesSchema(schema)]` | Applied on the **Model** — links it back to the schema |
+| `#[UsesSchema(schema)]` | Applied on the model - links it back to the schema |
 
 #### Property-level
 
@@ -200,8 +215,8 @@ public ?string $status = 'active';
 |---|---|
 | `#[Fillable]` | `$fillable[]` |
 | `#[Hidden]` | `$hidden[]` |
-| `#[Cast('type')]` | `$casts[]` — supports all Laravel cast strings and class names |
-| `#[Appended]` | `$appends[]` — for virtual accessors |
+| `#[Cast('type')]` | `$casts[]` - supports all Laravel cast strings and class names |
+| `#[Appended]` | `$appends[]` - for virtual accessors |
 
 ```php
 #[Column(type: 'string', length: 255)]
@@ -222,7 +237,7 @@ public string $full_name;  // implement the accessor in the Model
 
 | Attribute | Description |
 |---|---|
-| `#[UsesSchemaMigration(schema)]` | Applied on a **migration class** — drives `up()` and `down()` from schema annotations at runtime |
+| `#[UsesSchemaMigration(schema)]` | Applied on a migration class - drives `up()` and `down()` from schema annotations at runtime |
 
 ```php
 #[UsesSchemaMigration(UserSchema::class)]
@@ -239,7 +254,7 @@ return new class extends Migration {
 
 Mix into any Eloquent Model that carries `#[UsesSchema]`.
 
-**Boot wiring** — resolved automatically at `parent::boot()`:
+Boot wiring - resolved automatically at `parent::boot()`:
 
 | Model property | Driven by |
 |---|---|
@@ -249,25 +264,25 @@ Mix into any Eloquent Model that carries `#[UsesSchema]`.
 | `$hidden` | `#[Hidden]` on schema + model properties |
 | `$casts` | `#[Cast('...')]` on schema properties |
 | `$appends` | `#[Appended]` on schema properties |
-| `SoftDeletingScope` | `#[Table(softDeletes: true)]` — applied automatically |
+| `SoftDeletingScope` | `#[Table(softDeletes: true)]` - applied automatically |
 
-**Relation resolution** — `__call()` intercepts any relation method name not defined on the model and resolves it live from the schema's `#[HasOne]`, `#[HasMany]`, `#[BelongsTo]`, `#[BelongsToMany]` annotations.
+Relation resolution - `__call()` intercepts any relation method name not defined on the model and resolves it live from the schema's `#[HasOne]`, `#[HasMany]`, `#[BelongsTo]`, `#[BelongsToMany]` annotations.
 
-**Validation helpers**:
+Validation helpers:
 
 ```php
-// Returns MessageBag — empty means valid
+// Returns MessageBag - empty means valid
 $errors = User::schemaValidate($data);
 
 // Throws ValidationException on failure
 User::schemaValidateOrFail($data);
 
-// For update — auto-ignores $user->id in all #[Unique] checks
+// For update - auto-ignores $user->id in all #[Unique] checks
 $user->schemaValidateForUpdate($data);
 
 // Introspection
-User::schemaFillable();  // → ['name', 'email', ...]
-User::schemaCasts();     // → ['password' => 'hashed', ...]
+User::schemaFillable();  // -> ['name', 'email', ...]
+User::schemaCasts();     // -> ['password' => 'hashed', ...]
 ```
 
 ---
@@ -283,7 +298,7 @@ Provides `up()` and `down()` by reflecting on the schema at runtime:
 - Calls `$blueprint->softDeletes()` if `#[Table(softDeletes: true)]`
 - `down()` calls `Schema::dropIfExists($table->name)`
 
-No generated file needed — works with `RefreshDatabase` in tests out of the box.
+No generated file needed - works with `RefreshDatabase` in tests out of the box.
 
 ---
 
@@ -313,7 +328,7 @@ php artisan schema:model "App\Example\UserSchema" --force   # overwrite existing
 # 1. Write your schema class (UserSchema.php)
 
 # 2. Create the annotation-driven migration file
-#    (or write it manually — see database/migrations example)
+#    (or write it manually - see database/migrations example)
 php artisan schema:migrate "App\Example\UserSchema"
 
 # 3. Generate Eloquent relation methods
@@ -339,7 +354,7 @@ class User extends Model
 }
 ```
 
-Everything else — `$fillable`, `$casts`, `$hidden`, `$appends`, `$table`, soft deletes, and all relation methods — is resolved at runtime from `UserSchema`.
+Everything else - `$fillable`, `$casts`, `$hidden`, `$appends`, `$table`, soft deletes, and all relation methods - is resolved at runtime from `UserSchema`.
 
 ---
 
@@ -348,13 +363,13 @@ Everything else — `$fillable`, `$casts`, `$hidden`, `$appends`, `$table`, soft
 ### In a Controller
 
 ```php
-// store — full validation
+// store - full validation
 User::schemaValidateOrFail($request->all());
 
-// update — skips Required for absent fields, ignores own record in Unique
+// update - skips Required for absent fields, ignores own record in Unique
 $user->schemaValidateForUpdate($request->all());
 
-// manual — returns MessageBag instead of throwing
+// manual - returns MessageBag instead of throwing
 $errors = User::schemaValidate($request->all());
 if ($errors->isNotEmpty()) {
     return response()->json(['errors' => $errors], 422);
@@ -490,17 +505,17 @@ public string $phone;
 
 | File | Purpose |
 |---|---|
-| `Attributes/Migration/Table.php` | `#[Table]` — table name, timestamps, soft deletes |
-| `Attributes/Migration/Column.php` | `#[Column]` — column type, length, nullable, default |
-| `Attributes/Migration/PrimaryKey.php` | `#[PrimaryKey]` — pk type |
-| `Attributes/Migration/ForeignKey.php` | `#[ForeignKey]` — FK constraint |
+| `Attributes/Migration/Table.php` | `#[Table]` - table name, timestamps, soft deletes |
+| `Attributes/Migration/Column.php` | `#[Column]` - column type, length, nullable, default |
+| `Attributes/Migration/PrimaryKey.php` | `#[PrimaryKey]` - pk type |
+| `Attributes/Migration/ForeignKey.php` | `#[ForeignKey]` - FK constraint |
 | `Attributes/Migration/HasOne.php` | `#[HasOne]` relation |
 | `Attributes/Migration/HasMany.php` | `#[HasMany]` relation |
 | `Attributes/Migration/BelongsTo.php` | `#[BelongsTo]` relation |
 | `Attributes/Migration/BelongsToMany.php` | `#[BelongsToMany]` relation + pivot |
-| `Attributes/Migration/UsesSchemaMigration.php` | `#[UsesSchemaMigration]` — links migration to schema |
-| `Attributes/Model/EloquentModel.php` | `#[EloquentModel]` — links schema to model class |
-| `Attributes/Model/UsesSchema.php` | `#[UsesSchema]` — links model to schema |
+| `Attributes/Migration/UsesSchemaMigration.php` | `#[UsesSchemaMigration]` - links migration to schema |
+| `Attributes/Model/EloquentModel.php` | `#[EloquentModel]` - links schema to model class |
+| `Attributes/Model/UsesSchema.php` | `#[UsesSchema]` - links model to schema |
 | `Attributes/Model/Fillable.php` | `#[Fillable]` |
 | `Attributes/Model/Hidden.php` | `#[Hidden]` |
 | `Attributes/Model/Cast.php` | `#[Cast]` |
@@ -509,9 +524,9 @@ public string $phone;
 | `Contracts/ValidationRule.php` | Interface all validation attributes implement |
 | `Support/Validator.php` | Reflects schema and runs validation rules |
 | `Support/MigrationGenerator.php` | Generates migration PHP source from schema |
-| `Support/RelationGenerator.php` | Generates Eloquent relation methods + pivot migrations |
+| `Support/RelationGenerator.php` | Generates Eloquent relation methods and pivot migrations |
 | `Support/ModelGenerator.php` | Generates Eloquent Model PHP file from schema |
-| `Traits/HasSchema.php` | Boot wiring + relation resolver + validation helpers |
+| `Traits/HasSchema.php` | Boot wiring, relation resolver, validation helpers |
 | `Traits/RunsSchemaMigration.php` | Runtime `up()` / `down()` from schema annotations |
 | `Console/Commands/SchemaMigrate.php` | `php artisan schema:migrate` |
 | `Console/Commands/SchemaRelations.php` | `php artisan schema:relations` |

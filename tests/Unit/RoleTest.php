@@ -2,13 +2,12 @@
 
 namespace Tests\Unit;
 
+use Tests\TestCase;
 use App\Models\Role;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\MessageBag;
 use Illuminate\Support\Str;
 use PHPUnit\Framework\Attributes\Test;
-use Tests\TestCase;
 
 /**
  * RoleTest
@@ -29,24 +28,24 @@ class RoleTest extends TestCase
     #[Test]
     public function it_has_the_expected_columns(): void
     {
-        $this->assertTrue(Schema::hasColumn('roles', 'public_id'), 'Column [public_id] missing.');
-        $this->assertTrue(Schema::hasColumn('roles', 'name'), 'Column [name] missing.');
-        $this->assertTrue(Schema::hasColumn('roles', 'status'), 'Column [status] missing.');
-        $this->assertTrue(Schema::hasColumn('roles', 'age'), 'Column [age] missing.');
-        $this->assertTrue(Schema::hasColumn('roles', 'born_at'), 'Column [born_at] missing.');
-        $this->assertTrue(Schema::hasColumn('roles', 'department_id'), 'Column [department_id] missing.');
+        $this->assertTrue(Schema::hasColumn('roles', 'public_id'), "Column [public_id] missing.");
+        $this->assertTrue(Schema::hasColumn('roles', 'name'), "Column [name] missing.");
+        $this->assertTrue(Schema::hasColumn('roles', 'status'), "Column [status] missing.");
+        $this->assertTrue(Schema::hasColumn('roles', 'age'), "Column [age] missing.");
+        $this->assertTrue(Schema::hasColumn('roles', 'born_at'), "Column [born_at] missing.");
+        $this->assertTrue(Schema::hasColumn('roles', 'department_id'), "Column [department_id] missing.");
     }
 
     #[Test]
     public function model_fillable_is_resolved_from_schema(): void
     {
         $model = new Role;
-        $this->assertContains('public_id', $model->getFillable(), '[public_id] should be fillable.');
-        $this->assertContains('name', $model->getFillable(), '[name] should be fillable.');
-        $this->assertContains('status', $model->getFillable(), '[status] should be fillable.');
-        $this->assertContains('age', $model->getFillable(), '[age] should be fillable.');
-        $this->assertContains('born_at', $model->getFillable(), '[born_at] should be fillable.');
-        $this->assertContains('department_id', $model->getFillable(), '[department_id] should be fillable.');
+        $this->assertContains('public_id', $model->getFillable(), "[public_id] should be fillable.");
+        $this->assertContains('name', $model->getFillable(), "[name] should be fillable.");
+        $this->assertContains('status', $model->getFillable(), "[status] should be fillable.");
+        $this->assertContains('age', $model->getFillable(), "[age] should be fillable.");
+        $this->assertContains('born_at', $model->getFillable(), "[born_at] should be fillable.");
+        $this->assertContains('department_id', $model->getFillable(), "[department_id] should be fillable.");
     }
 
     #[Test]
@@ -67,14 +66,14 @@ class RoleTest extends TestCase
     public function validation_fails_when_required_fields_are_missing(): void
     {
         $errors = $this->schemaValidate([]);
-        $this->assertTrue($errors->has('public_id'), '[public_id] should fail required.');
-        $this->assertTrue($errors->has('name'), '[name] should fail required.');
+        $this->assertTrue($errors->has('public_id'), "[public_id] should fail required.");
+        $this->assertTrue($errors->has('name'), "[name] should fail required.");
     }
 
     #[Test]
     public function validation_fails_when_status_is_not_in_allowed_values(): void
     {
-        $data = $this->validData();
+        $data           = $this->validData();
         $data['status'] = '__invalid__';
 
         $errors = $this->schemaValidate($data);
@@ -85,7 +84,7 @@ class RoleTest extends TestCase
     #[Test]
     public function validation_fails_with_invalid_uuid(): void
     {
-        $data = $this->validData();
+        $data           = $this->validData();
         $data['public_id'] = 'not-a-uuid';
 
         $errors = $this->schemaValidate($data);
@@ -106,7 +105,7 @@ class RoleTest extends TestCase
     public function soft_delete_works(): void
     {
         $model = Role::create($this->createData());
-        $id = $model->id;
+        $id    = $model->id;
 
         $model->delete();
 
@@ -150,7 +149,7 @@ class RoleTest extends TestCase
         return Role::factory()->raw();
     }
 
-    private function schemaValidate(array $data, array $ignoreUniqueFor = [], bool $skipMissing = false): MessageBag
+    private function schemaValidate(array $data, array $ignoreUniqueFor = [], bool $skipMissing = false): \Illuminate\Support\MessageBag
     {
         return Role::schemaValidate($data, $ignoreUniqueFor, $skipMissing);
     }

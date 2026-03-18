@@ -1,8 +1,7 @@
 <?php
 
-use App\Schema\RoleSchema;
-use App\Traits\RunsSchemaMigration;
 use Illuminate\Database\Migrations\Migration;
+use App\Traits\RunsSchemaMigration;
 
 return new class extends Migration
 {
@@ -10,6 +9,6 @@ return new class extends Migration
 
     protected function schema(): string
     {
-        return RoleSchema::class;
+        return \App\Schema\RoleSchema::class;
     }
 };

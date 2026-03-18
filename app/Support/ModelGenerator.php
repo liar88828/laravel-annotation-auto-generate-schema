@@ -34,10 +34,15 @@ use ReflectionProperty;
  *   #[BelongsToMany]  → belongsToMany() method
  *
  * Usage:
+ *   // Minimal model (default)
  *   $source = ModelGenerator::generate(UserSchema::class);
+ *
+ *   // Full explicit model
+ *   $source = ModelGenerator::generate(UserSchema::class, raw: true);
  *
  *   // Write to app/Models/User.php
  *   ModelGenerator::write(UserSchema::class);
+ *   ModelGenerator::write(UserSchema::class, raw: true);
  */
 class ModelGenerator
 {
@@ -49,23 +54,25 @@ class ModelGenerator
     // Public API
     // -------------------------------------------------------------------------
 
-    public static function generate(string $schemaClass): string
+    public static function generate(string $schemaClass, bool $raw = false): string
     {
-        return (new self($schemaClass))->build();
+        return $raw
+            ? (new self($schemaClass))->build()
+            : (new self($schemaClass))->buildMinimal();
     }
 
     /**
      * Write the generated model to disk.
      * Returns the path written.
      */
-    public static function write(string $schemaClass, ?string $outputDir = null): string
+    public static function write(string $schemaClass, ?string $outputDir = null, bool $raw = false): string
     {
-        $source = static::generate($schemaClass);
-        $ref = new ReflectionClass($schemaClass);
+        $source = static::generate($schemaClass, $raw);
+        $ref    = new ReflectionClass($schemaClass);
         $modelFq = static::resolveModelFqcn($ref);
-        $base = class_basename($modelFq);
-        $dir = $outputDir ?? app_path('Models');
-        $path = $dir.'/'.$base.'.php';
+        $base   = class_basename($modelFq);
+        $dir    = $outputDir ?? app_path('Models');
+        $path   = $dir.'/'.$base.'.php';
 
         if (! is_dir($dir)) {
             mkdir($dir, 0755, true);
@@ -77,14 +84,76 @@ class ModelGenerator
     }
 
     // -------------------------------------------------------------------------
-    // Internals
+    // Minimal model (default)
+    // -------------------------------------------------------------------------
+
+    private function buildMinimal(): string
+    {
+        $this->ref = new ReflectionClass($this->schemaClass);
+
+        $modelAttr = $this->firstAttr(EloquentModel::class);
+
+        if ($modelAttr === null) {
+            throw new \RuntimeException(
+                "Schema [{$this->schemaClass}] is missing the #[EloquentModel] attribute."
+            );
+        }
+
+        $modelFqcn = $modelAttr->model;
+
+        $this->guardModelNamespace($modelFqcn);
+
+        $modelBase   = class_basename($modelFqcn);
+        $namespace   = implode('\\', array_slice(explode('\\', $modelFqcn), 0, -1));
+        $schemaShort = class_basename($this->schemaClass);
+        $tableAttr   = $this->firstAttr(Table::class);
+        $usesSoftDeletes = $tableAttr?->softDeletes ?? false;
+
+        [$baseClass, $baseImport, $extraTraitImports, $extraTraitNames] =
+            $this->resolveBaseAndTraits($modelAttr);
+
+        $traits = array_filter([
+            'HasFactory',
+            'HasSchema',
+            $usesSoftDeletes ? 'SoftDeletes' : null,
+            ...$extraTraitNames,
+        ]);
+        $traitLine = '    use '.implode(', ', $traits).';';
+
+        $softDeleteImport = $usesSoftDeletes
+            ? "use Illuminate\\Database\\Eloquent\\SoftDeletes;\n"
+            : '';
+
+        $extraImportBlock = ! empty($extraTraitImports)
+            ? implode("\n", $extraTraitImports)."\n"
+            : '';
+
+        return <<<PHP
+<?php
+
+namespace {$namespace};
+
+{$baseImport}
+{$extraImportBlock}{$softDeleteImport}use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Attributes\Model\UsesSchema;
+use App\Traits\HasSchema;
+use App\Schema\\{$schemaShort};
+
+#[UsesSchema({$schemaShort}::class)]
+class {$modelBase} extends {$baseClass}
+{
+{$traitLine}
+}
+PHP;
+    }
+
+    // -------------------------------------------------------------------------
+    // Full explicit model (--raw)
     // -------------------------------------------------------------------------
 
     private function build(): string
     {
         $this->ref = new ReflectionClass($this->schemaClass);
-
-        // ── Class-level attributes ────────────────────────────────────────
 
         $modelAttr = $this->firstAttr(EloquentModel::class);
         $tableAttr = $this->firstAttr(Table::class);
@@ -97,84 +166,53 @@ class ModelGenerator
 
         $modelFqcn = $modelAttr->model;
 
-        // ── Guard: model FQCN must not resolve inside the schema namespace ─
-        // This happens when the schema file is missing `use App\Models\Xyz`
-        // and PHP resolves Xyz::class relative to the schema's own namespace.
-        $schemaNamespace = $this->ref->getNamespaceName();
-        $modelNamespace = implode('\\', array_slice(explode('\\', $modelFqcn), 0, -1));
+        $this->guardModelNamespace($modelFqcn);
 
-        if ($modelNamespace === $schemaNamespace) {
-            $modelBase = class_basename($modelFqcn);
-            // Strip trailing 'Schema' suffix: ProductSchema → Product
-            $modelBaseName = preg_replace('/Schema$/', '', $modelBase);
-            $expectedModel = "App\\Models\\{$modelBaseName}";
-            $schemaFile = $this->ref->getFileName();
-
-            throw new \RuntimeException(
-                implode(PHP_EOL, [
-                    "The model class [{$modelFqcn}] resolved inside the schema namespace.",
-                    "This means your schema file is missing the correct 'use' import.",
-                    '',
-                    "In [{$schemaFile}] add:",
-                    "  use {$expectedModel};",
-                    '',
-                    'Then update the attribute:',
-                    "  #[EloquentModel(model: {$modelBaseName}::class)]",
-                ])
-            );
-        }
         $modelBase = class_basename($modelFqcn);
         $namespace = implode('\\', array_slice(explode('\\', $modelFqcn), 0, -1));
 
         // ── Collect property-level data ───────────────────────────────────
 
-        $fillable = [];
-        $hidden = [];
-        $casts = [];
-        $appends = [];
-        $relations = [];
-        $primaryKey = 'id';
-        $keyType = 'int';
-        $incrementing = true;
+        $fillable        = [];
+        $hidden          = [];
+        $casts           = [];
+        $appends         = [];
+        $relations       = [];
+        $primaryKey      = 'id';
+        $keyType         = 'int';
+        $incrementing    = true;
         $usesSoftDeletes = $tableAttr?->softDeletes ?? false;
 
         foreach ($this->ref->getProperties() as $prop) {
             $name = $prop->getName();
 
-            // Primary key detection
             $pkAttr = $this->firstPropAttr($prop, PrimaryKey::class);
             if ($pkAttr !== null) {
                 $primaryKey = $pkAttr->name ?? $name;
                 if (in_array($pkAttr->type, ['uuid', 'ulid'])) {
-                    $keyType = 'string';
+                    $keyType      = 'string';
                     $incrementing = false;
                 }
-
-                continue; // PK is never fillable
+                continue;
             }
 
-            // Fillable
             if ($this->hasPropAttr($prop, Fillable::class)) {
                 $fillable[] = $name;
             }
 
-            // Hidden
             if ($this->hasPropAttr($prop, Hidden::class)) {
                 $hidden[] = $name;
             }
 
-            // Cast
             $castAttr = $this->firstPropAttr($prop, Cast::class);
             if ($castAttr !== null) {
                 $casts[$name] = $castAttr->as;
             }
 
-            // Appended
             if ($this->hasPropAttr($prop, Appended::class)) {
                 $appends[] = $name;
             }
 
-            // Relations
             foreach ([HasOne::class, HasMany::class, BelongsTo::class, BelongsToMany::class] as $relClass) {
                 $relAttr = $this->firstPropAttr($prop, $relClass);
                 if ($relAttr !== null) {
@@ -193,29 +231,8 @@ class ModelGenerator
         );
         $relationMethods = $this->buildRelationMethods($relations);
 
-        // ── Base class & extra traits from #[EloquentModel] ──────────────
-        $extendFqcn = $modelAttr->extend ?? null;
-        $extraTraits = $modelAttr->traits;   // array of FQCNs
-
-        // Resolve base class
-        if ($extendFqcn) {
-            $baseClass = class_basename($extendFqcn);
-            // Use an alias if it clashes with common names
-            $baseAlias = $baseClass === 'User' ? 'Authenticatable' : $baseClass;
-            $baseImport = "use {$extendFqcn}".($baseAlias !== $baseClass ? " as {$baseAlias}" : '').';';
-            $baseClass = $baseAlias;
-        } else {
-            $baseClass = 'Model';
-            $baseImport = 'use Illuminate\\Database\\Eloquent\\Model;';
-        }
-
-        // Resolve extra trait imports + short names
-        $extraTraitImports = [];
-        $extraTraitNames = [];
-        foreach ($extraTraits as $traitFqcn) {
-            $extraTraitImports[] = "use {$traitFqcn};";
-            $extraTraitNames[] = class_basename($traitFqcn);
-        }
+        [$baseClass, $baseImport, $extraTraitImports, $extraTraitNames] =
+            $this->resolveBaseAndTraits($modelAttr);
 
         $traits = array_filter([
             'HasFactory',
@@ -223,8 +240,8 @@ class ModelGenerator
             $usesSoftDeletes ? 'SoftDeletes' : null,
             ...$extraTraitNames,
         ]);
-        $traitLine = '    use '.implode(', ', $traits).';';
-        $schemaShort = class_basename($this->schemaClass);
+        $traitLine    = '    use '.implode(', ', $traits).';';
+        $schemaShort  = class_basename($this->schemaClass);
 
         $extraImportBlock = ! empty($extraTraitImports)
             ? implode("\n", $extraTraitImports)."\n"
@@ -305,7 +322,6 @@ class ModelGenerator
 
     private function renderCasts(array $casts): string
     {
-        // Eloquent built-in string cast keywords — always quoted, never ::class
         $builtinCasts = [
             'integer', 'int', 'real', 'float', 'double', 'decimal',
             'string', 'boolean', 'bool', 'object', 'array', 'json',
@@ -316,7 +332,6 @@ class ModelGenerator
 
         $lines = [];
         foreach ($casts as $field => $type) {
-            // Use ::class only for real custom cast classes (not built-in keywords)
             $isBuiltin = in_array(strtolower($type), array_map('strtolower', $builtinCasts))
                 || str_starts_with($type, 'decimal:')
                 || str_starts_with($type, 'date:')
@@ -342,11 +357,11 @@ class ModelGenerator
 
         foreach ($relations as [$propName, $relClass, $rel]) {
             $methods[] = match ($relClass) {
-                HasOne::class => $this->renderHasOne($propName, $rel),
-                HasMany::class => $this->renderHasMany($propName, $rel),
-                BelongsTo::class => $this->renderBelongsTo($propName, $rel),
+                HasOne::class        => $this->renderHasOne($propName, $rel),
+                HasMany::class       => $this->renderHasMany($propName, $rel),
+                BelongsTo::class     => $this->renderBelongsTo($propName, $rel),
                 BelongsToMany::class => $this->renderBelongsToMany($propName, $rel),
-                default => '',
+                default              => '',
             };
         }
 
@@ -356,8 +371,8 @@ class ModelGenerator
     private function renderHasOne(string $prop, HasOne $rel): string
     {
         $model = $this->schemaToModel($rel->related);
-        $args = $this->args($rel->foreignKey, $rel->localKey);
-        $ret = '\Illuminate\Database\Eloquent\Relations\HasOne';
+        $args  = $this->args($rel->foreignKey, $rel->localKey);
+        $ret   = '\Illuminate\Database\Eloquent\Relations\HasOne';
 
         return "    public function {$prop}(): {$ret}\n    {\n        return \$this->hasOne({$model}::class{$args});\n    }";
     }
@@ -365,29 +380,28 @@ class ModelGenerator
     private function renderHasMany(string $prop, HasMany $rel): string
     {
         $model = $this->schemaToModel($rel->related);
-        $args = $this->args($rel->foreignKey, $rel->localKey);
-        $ret = '\Illuminate\Database\Eloquent\Relations\HasMany';
+        $args  = $this->args($rel->foreignKey, $rel->localKey);
+        $ret   = '\Illuminate\Database\Eloquent\Relations\HasMany';
 
         return "    public function {$prop}(): {$ret}\n    {\n        return \$this->hasMany({$model}::class{$args});\n    }";
     }
 
     private function renderBelongsTo(string $prop, BelongsTo $rel): string
     {
-        // strip _id suffix for the method name: department_id → department
         $method = preg_replace('/_id$/', '', $prop);
-        $model = $this->schemaToModel($rel->related);
-        $args = $this->args($rel->foreignKey, $rel->ownerKey);
-        $ret = '\Illuminate\Database\Eloquent\Relations\BelongsTo';
+        $model  = $this->schemaToModel($rel->related);
+        $args   = $this->args($rel->foreignKey, $rel->ownerKey);
+        $ret    = '\Illuminate\Database\Eloquent\Relations\BelongsTo';
 
         return "    public function {$method}(): {$ret}\n    {\n        return \$this->belongsTo({$model}::class{$args});\n    }";
     }
 
     private function renderBelongsToMany(string $prop, BelongsToMany $rel): string
     {
-        $model = $this->schemaToModel($rel->related);
+        $model      = $this->schemaToModel($rel->related);
         $pivotTable = $rel->pivotTable ?? $this->derivePivot($this->schemaClass, $rel->related);
-        $fpk = $rel->foreignPivotKey;
-        $rpk = $rel->relatedPivotKey;
+        $fpk        = $rel->foreignPivotKey;
+        $rpk        = $rel->relatedPivotKey;
 
         $argParts = ["'{$pivotTable}'"];
         if ($fpk || $rpk) {
@@ -403,7 +417,7 @@ class ModelGenerator
             $chain .= "\n            ->withTimestamps()";
         }
         if (! empty($rel->pivotColumns)) {
-            $cols = implode("', '", array_map(
+            $cols   = implode("', '", array_map(
                 fn ($c) => explode(':', $c)[1] ?? $c,
                 $rel->pivotColumns
             ));
@@ -425,10 +439,8 @@ class ModelGenerator
             $uses[] = 'use Illuminate\Database\Eloquent\SoftDeletes;';
         }
 
-        // Import the schema class itself (needed for #[UsesSchema(UserSchema::class)])
         $uses[] = 'use '.ltrim($this->schemaClass, '\\').';';
 
-        // Collect related model classes
         $models = [];
         foreach ($relations as [, $relClass, $rel]) {
             $modelFqcn = ltrim($this->schemaToModel($rel->related), '\\');
@@ -444,7 +456,67 @@ class ModelGenerator
         return implode(PHP_EOL, array_unique($uses));
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────────
+    // ── Shared helpers ────────────────────────────────────────────────────
+
+    /**
+     * Resolve base class + extra traits from #[EloquentModel].
+     * Returns [$baseClass, $baseImport, $extraTraitImports[], $extraTraitNames[]]
+     */
+    private function resolveBaseAndTraits(object $modelAttr): array
+    {
+        $extendFqcn = $modelAttr->extend ?? null;
+        $extraTraits = $modelAttr->traits ?? [];
+
+        if ($extendFqcn) {
+            $baseClass  = class_basename($extendFqcn);
+            $baseAlias  = $baseClass === 'User' ? 'Authenticatable' : $baseClass;
+            $baseImport = "use {$extendFqcn}".($baseAlias !== $baseClass ? " as {$baseAlias}" : '').';';
+            $baseClass  = $baseAlias;
+        } else {
+            $baseClass  = 'Model';
+            $baseImport = 'use Illuminate\\Database\\Eloquent\\Model;';
+        }
+
+        $extraTraitImports = [];
+        $extraTraitNames   = [];
+        foreach ($extraTraits as $traitFqcn) {
+            $extraTraitImports[] = "use {$traitFqcn};";
+            $extraTraitNames[]   = class_basename($traitFqcn);
+        }
+
+        return [$baseClass, $baseImport, $extraTraitImports, $extraTraitNames];
+    }
+
+    /**
+     * Guard against the model FQCN resolving inside the schema's own namespace.
+     */
+    private function guardModelNamespace(string $modelFqcn): void
+    {
+        $schemaNamespace = $this->ref->getNamespaceName();
+        $modelNamespace  = implode('\\', array_slice(explode('\\', $modelFqcn), 0, -1));
+
+        if ($modelNamespace !== $schemaNamespace) {
+            return;
+        }
+
+        $modelBase     = class_basename($modelFqcn);
+        $modelBaseName = preg_replace('/Schema$/', '', $modelBase);
+        $expectedModel = "App\\Models\\{$modelBaseName}";
+        $schemaFile    = $this->ref->getFileName();
+
+        throw new \RuntimeException(
+            implode(PHP_EOL, [
+                "The model class [{$modelFqcn}] resolved inside the schema namespace.",
+                "This means your schema file is missing the correct 'use' import.",
+                '',
+                "In [{$schemaFile}] add:",
+                "  use {$expectedModel};",
+                '',
+                'Then update the attribute:',
+                "  #[EloquentModel(model: {$modelBaseName}::class)]",
+            ])
+        );
+    }
 
     private function firstAttr(string $attrClass): ?object
     {
