@@ -2,12 +2,12 @@
 
 namespace Tests\Unit;
 
+use Tests\TestCase;
 use App\Models\Shop;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\MessageBag;
+use Illuminate\Support\Str;
 use PHPUnit\Framework\Attributes\Test;
-use Tests\TestCase;
 
 /**
  * ShopTest
@@ -28,18 +28,18 @@ class ShopTest extends TestCase
     #[Test]
     public function it_has_the_expected_columns(): void
     {
-        $this->assertTrue(Schema::hasColumn('shops', 'name'), 'Column [name] missing.');
-        $this->assertTrue(Schema::hasColumn('shops', 'address'), 'Column [address] missing.');
-        $this->assertTrue(Schema::hasColumn('shops', 'is_active'), 'Column [is_active] missing.');
+        $this->assertTrue(Schema::hasColumn('shops', 'name'), "Column [name] missing.");
+        $this->assertTrue(Schema::hasColumn('shops', 'address'), "Column [address] missing.");
+        $this->assertTrue(Schema::hasColumn('shops', 'is_active'), "Column [is_active] missing.");
     }
 
     #[Test]
     public function model_fillable_is_resolved_from_schema(): void
     {
         $model = new Shop;
-        $this->assertContains('name', $model->getFillable(), '[name] should be fillable.');
-        $this->assertContains('address', $model->getFillable(), '[address] should be fillable.');
-        $this->assertContains('is_active', $model->getFillable(), '[is_active] should be fillable.');
+        $this->assertContains('name', $model->getFillable(), "[name] should be fillable.");
+        $this->assertContains('address', $model->getFillable(), "[address] should be fillable.");
+        $this->assertContains('is_active', $model->getFillable(), "[is_active] should be fillable.");
     }
 
     #[Test]
@@ -52,7 +52,7 @@ class ShopTest extends TestCase
     public function validation_fails_when_required_fields_are_missing(): void
     {
         $errors = $this->schemaValidate([]);
-        $this->assertTrue($errors->has('name'), '[name] should fail required.');
+        $this->assertTrue($errors->has('name'), "[name] should fail required.");
     }
 
     #[Test]
@@ -68,7 +68,7 @@ class ShopTest extends TestCase
     public function soft_delete_works(): void
     {
         $model = Shop::create($this->createData());
-        $id = $model->id;
+        $id    = $model->id;
 
         $model->delete();
 
@@ -109,7 +109,7 @@ class ShopTest extends TestCase
         return Shop::factory()->make()->toArray();
     }
 
-    private function schemaValidate(array $data, array $ignoreUniqueFor = [], bool $skipMissing = false): MessageBag
+    private function schemaValidate(array $data, array $ignoreUniqueFor = [], bool $skipMissing = false): \Illuminate\Support\MessageBag
     {
         return Shop::schemaValidate($data, $ignoreUniqueFor, $skipMissing);
     }

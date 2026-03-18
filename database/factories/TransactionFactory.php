@@ -2,10 +2,9 @@
 
 namespace Database\Factories;
 
-use App\Models\Product;
-use App\Models\Shop;
 use App\Models\Transaction;
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Str;
 
 /**
  * TransactionFactory
@@ -23,8 +22,8 @@ class TransactionFactory extends Factory
     public function definition(): array
     {
         return [
-            'product_id' => Product::factory()->create()->id,
-            'shop_id' => Shop::factory()->create()->id,
+            'product_id' => \App\Models\Product::factory()->create()->id,
+            'shop_id' => \App\Models\Shop::factory()->create()->id,
             'quantity' => fake()->numberBetween(1, 100),
             'price' => fake()->randomFloat(2, 1, 9999),
             'total' => fake()->randomFloat(2, 0, 999999999999),

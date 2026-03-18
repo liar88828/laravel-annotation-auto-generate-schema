@@ -2,42 +2,45 @@
 
 namespace Tests\Unit;
 
-use App\Models\Favorite;
+use Tests\TestCase;
+use App\Models\Article;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\MessageBag;
+use Illuminate\Support\Str;
 use PHPUnit\Framework\Attributes\Test;
-use Tests\TestCase;
 
 /**
- * FavoriteTest
+ * ArticleTest
  *
- * Auto-generated from App\Schema\FavoriteSchema.
+ * Auto-generated from App\Schema\ArticleSchema.
  * Covers: migration, model wiring, validation, persistence.
  */
-class FavoriteTest extends TestCase
+class ArticleTest extends TestCase
 {
     use RefreshDatabase;
 
     #[Test]
-    public function it_creates_the_favorites_table_from_schema_annotations(): void
+    public function it_creates_the_articles_table_from_schema_annotations(): void
     {
-        $this->assertTrue(Schema::hasTable('favorites'));
+        $this->assertTrue(Schema::hasTable('articles'));
     }
 
     #[Test]
-    public function it_has_the_expected_columns(): void {}
+    public function it_has_the_expected_columns(): void
+    {
+
+    }
 
     #[Test]
     public function model_table_is_resolved_from_schema(): void
     {
-        $this->assertSame('favorites', (new Favorite)->getTable());
+        $this->assertSame('articles', (new Article)->getTable());
     }
 
     #[Test]
-    public function it_can_create_a_favorite(): void
+    public function it_can_create_a_article(): void
     {
-        $model = Favorite::create($this->createData());
+        $model = Article::create($this->createData());
 
         $this->assertNotNull($model->id);
         $this->assertDatabaseHas($model->getTable(), ['id' => $model->id]);
@@ -61,11 +64,11 @@ class FavoriteTest extends TestCase
      */
     private function createData(): array
     {
-        return Favorite::factory()->make()->toArray();
+        return Article::factory()->make()->toArray();
     }
 
-    private function schemaValidate(array $data, array $ignoreUniqueFor = [], bool $skipMissing = false): MessageBag
+    private function schemaValidate(array $data, array $ignoreUniqueFor = [], bool $skipMissing = false): \Illuminate\Support\MessageBag
     {
-        return Favorite::schemaValidate($data, $ignoreUniqueFor, $skipMissing);
+        return Article::schemaValidate($data, $ignoreUniqueFor, $skipMissing);
     }
 }

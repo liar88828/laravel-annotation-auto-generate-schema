@@ -40,7 +40,6 @@ class UserExample extends Model
     ];
 
     protected $casts = [
-        'password' => 'hashed',
         'is_verified' => 'boolean',
         'born_at' => 'date:Y-m-d',
         'settings' => 'array',
@@ -56,9 +55,9 @@ class UserExample extends Model
         return $this->hasOne(Profile::class, 'user_id');
     }
 
-    public function posts(): HasMany
+    public function articles(): HasMany
     {
-        return $this->hasMany(Post::class, 'user_id');
+        return $this->hasMany(Article::class, 'user_id');
     }
 
     public function roles(): BelongsToMany

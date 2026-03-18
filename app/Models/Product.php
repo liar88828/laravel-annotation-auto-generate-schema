@@ -2,13 +2,12 @@
 
 namespace App\Models;
 
-use App\Attributes\Model\UsesSchema;
-use App\Schema\ProductSchema;
-use App\Traits\HasSchema;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Attributes\Model\UsesSchema;
+use App\Traits\HasSchema;
 use Illuminate\Database\Eloquent\SoftDeletes;
-
+use App\Schema\ProductSchema;
 #[UsesSchema(ProductSchema::class)]
 class Product extends Model
 {
@@ -24,4 +23,5 @@ class Product extends Model
         'sku',
         'is_active',
     ];
+
 }

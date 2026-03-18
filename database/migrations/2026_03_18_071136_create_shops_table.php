@@ -1,15 +1,25 @@
 <?php
 
-use App\Schema\ShopSchema;
-use App\Traits\RunsSchemaMigration;
 use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    use RunsSchemaMigration;
-
-    protected function schema(): string
+    public function up(): void
     {
-        return ShopSchema::class;
+        Schema::create('shops', function (Blueprint $table) {
+            $table->bigIncrements('id');
+            $table->string('name', 150);
+            $table->text('address')->nullable();
+            $table->boolean('is_active')->default(true);
+            $table->timestamps();
+            $table->softDeletes();
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('shops');
     }
 };

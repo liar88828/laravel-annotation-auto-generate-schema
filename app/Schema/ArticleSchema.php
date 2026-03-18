@@ -3,9 +3,9 @@
 namespace App\Schema;
 
 // ── Migration ──────────────────────────────────────────────────────────────
+use App\Attributes\Migration\Table;
 use App\Attributes\Migration\Column;
 use App\Attributes\Migration\PrimaryKey;
-use App\Attributes\Migration\Table;
 // use App\Attributes\Migration\ForeignKey;
 // use App\Attributes\Migration\HasOne;
 // use App\Attributes\Migration\HasMany;
@@ -13,8 +13,8 @@ use App\Attributes\Migration\Table;
 // use App\Attributes\Migration\BelongsToMany;
 
 // ── Validation ─────────────────────────────────────────────────────────────
-use App\Attributes\Model\EloquentModel;
-use App\Attributes\Model\Fillable;
+use App\Attributes\Validation\Required;
+use App\Attributes\Validation\Min;
 use App\Attributes\Validation\Max;
 // use App\Attributes\Validation\Email;
 // use App\Attributes\Validation\Numeric;
@@ -22,34 +22,37 @@ use App\Attributes\Validation\Max;
 // use App\Attributes\Validation\Unique;
 // use App\Attributes\Validation\Confirmed;
 // use App\Attributes\Validation\Regex;
-// use App\Attributes\Validation\Uuid;
+use App\Attributes\Validation\Uuid;
 
 // ── Model ──────────────────────────────────────────────────────────────────
-use App\Attributes\Validation\Min;
-use App\Attributes\Validation\Required;
+use App\Attributes\Model\EloquentModel;
+use App\Attributes\Model\Fillable;
 // use App\Attributes\Model\Hidden;
 // use App\Attributes\Model\Cast;
 // use App\Attributes\Model\Appended;
 
-// NOTE: The model class name is 'Warehouse' (without 'Schema' suffix).
-// This import is required so PHP resolves Warehouse::class to App\Models\Warehouse
-// and not to App\Schema\Warehouse.
-use App\Models\Warehouse;
+// NOTE: The model class name is 'Article' (without 'Schema' suffix).
+// This import is required so PHP resolves Article::class to App\Models\Article
+// and not to App\Schema\Article.
+use App\Models\Article;
 
-#[EloquentModel(model: Warehouse::class)]
-#[Table(name: 'warehouses', timestamps: true, softDeletes: false)]
-class WarehouseSchema
+#[EloquentModel(model: Article::class)]
+#[Table(name: 'articles', timestamps: true, softDeletes: false)]
+class ArticleSchema
 {
-    // ── Primary key ────────────────────────────────────────────────────────
+    // ── Primary key (UUID v4) ──────────────────────────────────────────────
+    // $incrementing = false and $keyType = 'string' are set automatically
+    // by HasSchema when it reads #[PrimaryKey(type: 'uuid')].
 
-    #[PrimaryKey(type: 'bigIncrements')]
-    public int $id;
+    #[PrimaryKey(type: 'uuid')]
+    #[Uuid(version: 4)]
+    public string $id;
 
     // ── Add your columns below ─────────────────────────────────────────────
     //
     // #[Column(type: 'string', length: 100, nullable: false)]
     // #[Fillable]
-    // #[Required(message: 'WarehouseSchema name is required.')]
+    // #[Required(message: 'ArticleSchema name is required.')]
     // #[Min(2,   message: 'Name must be at least 2 characters.')]
     // #[Max(100, message: 'Name must not exceed 100 characters.')]
     // public string $name;

@@ -2,12 +2,12 @@
 
 namespace Tests\Unit;
 
+use Tests\TestCase;
 use App\Models\Team;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\MessageBag;
+use Illuminate\Support\Str;
 use PHPUnit\Framework\Attributes\Test;
-use Tests\TestCase;
 
 /**
  * TeamTest
@@ -26,7 +26,10 @@ class TeamTest extends TestCase
     }
 
     #[Test]
-    public function it_has_the_expected_columns(): void {}
+    public function it_has_the_expected_columns(): void
+    {
+
+    }
 
     #[Test]
     public function model_table_is_resolved_from_schema(): void
@@ -64,7 +67,7 @@ class TeamTest extends TestCase
         return Team::factory()->make()->toArray();
     }
 
-    private function schemaValidate(array $data, array $ignoreUniqueFor = [], bool $skipMissing = false): MessageBag
+    private function schemaValidate(array $data, array $ignoreUniqueFor = [], bool $skipMissing = false): \Illuminate\Support\MessageBag
     {
         return Team::schemaValidate($data, $ignoreUniqueFor, $skipMissing);
     }
