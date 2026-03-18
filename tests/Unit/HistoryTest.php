@@ -86,11 +86,12 @@ class HistoryTest extends TestCase
 
     /**
      * Data suitable for Model::create().
-     * Uses the factory so it stays in sync with your factory definition.
+     * Uses factory()->raw() to preserve hidden fields (e.g. password)
+     * that toArray() would strip out.
      */
     private function createData(): array
     {
-        return History::factory()->make()->toArray();
+        return History::factory()->raw();
     }
 
     private function schemaValidate(array $data, array $ignoreUniqueFor = [], bool $skipMissing = false): \Illuminate\Support\MessageBag

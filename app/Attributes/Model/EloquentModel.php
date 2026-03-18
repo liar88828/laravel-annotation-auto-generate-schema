@@ -6,20 +6,29 @@ use Attribute;
 
 /**
  * Marks a schema class as the source of truth for an Eloquent Model.
- * Controls $table, $primaryKey, $keyType, $incrementing, and $connection.
  *
- * Usage:
+ * Usage (basic):
+ *   #[EloquentModel(model: User::class)]
+ *
+ * Usage (auth model with custom base + extra traits):
  *   #[EloquentModel(
- *       model:       User::class,
- *       connection:  'mysql',        // optional, uses default if omitted
+ *       model:   UserExample::class,
+ *       extend:  \Illuminate\Foundation\Auth\User::class,
+ *       traits:  [\Illuminate\Notifications\Notifiable::class,
+ *                 \Laravel\Fortify\TwoFactorAuthenticatable::class],
  *   )]
- *   class UserSchema { ... }
+ *
+ * Note: parameter is named 'traits' not 'use' because 'use' is a PHP reserved keyword
+ * and cannot be used as a named argument in attribute syntax.
  */
 #[Attribute(Attribute::TARGET_CLASS)]
 class EloquentModel
 {
+    /** @param string[] $traits */
     public function __construct(
         public readonly string $model,
+        public readonly ?string $extend = null,
+        public readonly array $traits = [],
         public readonly ?string $connection = null,
     ) {}
 }

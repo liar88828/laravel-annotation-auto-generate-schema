@@ -4,7 +4,9 @@ namespace Tests\Feature;
 
 use Tests\TestCase;
 use App\Models\Team;
+
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Arr;
 use PHPUnit\Framework\Attributes\Test;
 
 /**
@@ -37,7 +39,7 @@ class TeamControllerTest extends TestCase
     #[Test]
     public function store_creates_a_new_team(): void
     {
-        $data = Team::factory()->make()->toArray();
+        $data = Arr::only(Team::factory()->make()->toArray(), ['name', 'slug', 'description']);
 
         $response = $this->postJson('/teams', $data);
 
@@ -80,7 +82,7 @@ class TeamControllerTest extends TestCase
     public function update_modifies_an_existing_team(): void
     {
         $team  = Team::factory()->create();
-        $data = Team::factory()->make()->toArray();
+        $data = Arr::only(Team::factory()->make()->toArray(), ['name', 'slug', 'description']);
 
         $response = $this->putJson("/teams/{$team->id}", $data);
 

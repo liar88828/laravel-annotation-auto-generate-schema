@@ -22,13 +22,22 @@ class ArticleFactory extends Factory
     public function definition(): array
     {
         return [
-            'user_id' => \App\Models\User::factory()->create()->id,
+            'user_id' => \App\Models\User::factory()->create()->getKey(),
             'title' => fake()->sentence(3),
             'slug' => fake()->slug(),
             'content' => fake()->paragraphs(3, true),
-            'excerpt' => fake()->optional(0.8)->text(255) ?? null,
+            'excerpt' => fake()->boolean(80) ? fake()->text(255) : null,
             'status' => fake()->randomElement(['draft', 'published', 'archived']),
-            'published_at' => fake()->optional(0.8)->dateTime() ?? null,
+            'published_at' => fake()->boolean(80) ? fake()->dateTime() : null,
         ];
+    }
+
+    /**
+     * Store the model bypassing mass assignment so FK columns not in $fillable
+     * (e.g. user_id) are still persisted correctly.
+     */
+    protected function store(iterable $results): void
+    {
+        Article::unguarded(fn () => parent::store($results));
     }
 }

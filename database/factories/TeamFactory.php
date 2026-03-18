@@ -24,7 +24,16 @@ class TeamFactory extends Factory
         return [
             'name' => fake()->name(),
             'slug' => fake()->slug(),
-            'description' => fake()->optional(0.8)->paragraph() ?? null,
+            'description' => fake()->boolean(80) ? fake()->paragraph() : null,
         ];
+    }
+
+    /**
+     * Store the model bypassing mass assignment so FK columns not in $fillable
+     * (e.g. user_id) are still persisted correctly.
+     */
+    protected function store(iterable $results): void
+    {
+        Team::unguarded(fn () => parent::store($results));
     }
 }

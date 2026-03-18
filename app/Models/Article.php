@@ -27,7 +27,7 @@ class Article extends Model
     ];
 
     protected $casts = [
-        'published_at' => datetime::class,
+        'published_at' => 'datetime',
         'views' => 'integer',
     ];
     public function user(): \Illuminate\Database\Eloquent\Relations\BelongsTo

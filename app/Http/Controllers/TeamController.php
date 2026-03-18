@@ -43,8 +43,7 @@ class TeamController extends Controller
     public function store(Request $request): JsonResponse
     {
         Team::schemaValidateOrFail($request->all());
-
-        $team = Team::create($request->only([]));
+        $team = Team::create($request->only(['name', 'slug', 'description']));
 
         return response()->json($team, Response::HTTP_CREATED);
     }
@@ -63,8 +62,7 @@ class TeamController extends Controller
     public function update(Request $request, Team $team): JsonResponse
     {
         $team->schemaValidateForUpdate($request->all());
-
-        $team->update($request->only([]));
+        $team->update($request->only(['name', 'slug', 'description']));
 
         return response()->json($team->fresh());
     }

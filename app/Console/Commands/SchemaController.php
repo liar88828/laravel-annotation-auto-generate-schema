@@ -10,6 +10,7 @@ use App\Attributes\Migration\HasOne;
 use App\Attributes\Migration\HasMany;
 use App\Attributes\Migration\BelongsTo;
 use App\Attributes\Migration\BelongsToMany;
+use App\Attributes\Migration\ForeignSchema;
 use App\Attributes\Model\Fillable;
 use App\Attributes\Migration\Column;
 
@@ -198,11 +199,22 @@ class SchemaController extends Command
         $tableAttrs  = $ref->getAttributes(Table::class);
         $softDeletes = $tableAttrs ? $tableAttrs[0]->newInstance()->softDeletes : false;
 
-        // Fillable fields
-        $fillable = [];
+        // Fillable fields — split into FK fields and regular fields
+        // FK fields (BelongsTo/ForeignSchema) should not be sent via API POST
+        // as they're typically set server-side or via route binding.
+        $fillable      = [];
+        $fillableNoFk  = [];
+
         foreach ($ref->getProperties() as $prop) {
-            if ($prop->getAttributes(Fillable::class)) {
-                $fillable[] = $prop->getName();
+            if (! $prop->getAttributes(Fillable::class)) continue;
+
+            $name  = $prop->getName();
+            $isFk  = ! empty($prop->getAttributes(BelongsTo::class))
+                || ! empty($prop->getAttributes(ForeignSchema::class));
+
+            $fillable[] = $name;
+            if (! $isFk) {
+                $fillableNoFk[] = $name;
             }
         }
 
@@ -229,6 +241,29 @@ class SchemaController extends Command
 
         $allRelations = array_merge($hasOne, $hasMany, $belongsTo, $belongsToMany);
 
+        // Detect user FK for actingAs in controller tests
+        $hasUserFk   = false;
+        $userFkModel = null;
+        foreach ($ref->getProperties() as $prop) {
+            $name = $prop->getName();
+            if (in_array($name, ['user_id', 'author_id', 'created_by', 'owner_id'])
+                && (! empty($prop->getAttributes(BelongsTo::class))
+                    || ! empty($prop->getAttributes(ForeignSchema::class)))
+            ) {
+                $hasUserFk = true;
+                $btAttrs   = $prop->getAttributes(BelongsTo::class);
+                $fsAttrs   = $prop->getAttributes(ForeignSchema::class);
+                if (! empty($btAttrs)) {
+                    $rel         = $btAttrs[0]->newInstance()->related;
+                    $userFkModel = 'App\\Models\\' . preg_replace('/Schema$/', '', class_basename($rel));
+                } elseif (! empty($fsAttrs)) {
+                    $rel         = $fsAttrs[0]->newInstance()->schema;
+                    $userFkModel = 'App\\Models\\' . preg_replace('/Schema$/', '', class_basename($rel));
+                }
+                break;
+            }
+        }
+
         return [
             'schemaClass'     => $schemaClass,
             'modelName'       => $modelName,
@@ -239,6 +274,9 @@ class SchemaController extends Command
             'controllerClass' => $modelName . 'Controller',
             'softDeletes'     => $softDeletes,
             'fillable'        => $fillable,
+            'fillableNoFk'    => $fillableNoFk,
+            'hasUserFk'       => $hasUserFk,
+            'userFkModel'     => $userFkModel,
             'hasOne'          => $hasOne,
             'hasMany'         => $hasMany,
             'belongsTo'       => $belongsTo,
@@ -324,6 +362,33 @@ USE;
 
         [$attrIndex, $attrStore, $attrShow, $attrUpdate, $attrDestroy] = $attrs;
 
+        // If schema has a user FK field, inject Auth::id() in store/update
+        $hasUserFk   = $meta['hasUserFk'] ?? false;
+        $userFkField = null;
+        if ($hasUserFk) {
+            // Find the actual FK field name (user_id, author_id, etc.)
+            foreach (['user_id', 'author_id', 'created_by', 'owner_id'] as $candidate) {
+                if (in_array($candidate, $meta['fillable'])) {
+                    $userFkField = $candidate;
+                    break;
+                }
+            }
+        }
+
+        $authImport  = $hasUserFk && $userFkField ? "\nuse Illuminate\\Support\\Facades\\Auth;" : '';
+        $authMerge   = $hasUserFk && $userFkField
+            ? "        \$data = array_merge(\$request->only({$fillable}), ['{$userFkField}' => Auth::id()]);\n"
+            : '';
+        $createCall  = $hasUserFk && $userFkField
+            ? "\${$var} = {$m}::create(\$data);"          // $data already built above
+            : "\${$var} = {$m}::create(\$request->only({$fillable}));";
+        $updateMerge = $hasUserFk && $userFkField
+            ? "        \$data = array_merge(\$request->only({$fillable}), ['{$userFkField}' => Auth::id()]);\n"
+            : '';
+        $updateCall  = $hasUserFk && $userFkField
+            ? "\${$var}->update(\$data);"
+            : "\${$var}->update(\$request->only({$fillable}));";
+
         return <<<PHP
 <?php
 
@@ -332,7 +397,7 @@ namespace App\Http\Controllers;
 use {$model};
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Response;{$spatieUse}
+use Illuminate\Http\Response;{$spatieUse}{$authImport}
 
 {$docblock}{$classAttr}
 class {$controller} extends Controller
@@ -356,8 +421,7 @@ class {$controller} extends Controller
     public function store(Request \$request): JsonResponse
     {
         {$m}::schemaValidateOrFail(\$request->all());
-
-        \${$var} = {$m}::create(\$request->only({$fillable}));
+{$authMerge}        {$createCall}
 {$this->renderBelongsToManySync($meta, $var)}
         return response()->json(\${$var}{$relations}, Response::HTTP_CREATED);
     }
@@ -374,8 +438,7 @@ class {$controller} extends Controller
     public function update(Request \$request, {$m} \${$var}): JsonResponse
     {
         \${$var}->schemaValidateForUpdate(\$request->all());
-
-        \${$var}->update(\$request->only({$fillable}));
+{$updateMerge}        {$updateCall}
 {$this->renderBelongsToManySync($meta, $var)}
         return response()->json(\${$var}->fresh(){$this->renderLoadCall($meta)});
     }
@@ -777,19 +840,61 @@ PHP;
         $controller  = $meta['controllerClass'];
         $route       = $meta['routeName'];
         $softDeletes = $meta['softDeletes'];
-        $fillable    = $meta['fillable'];
+        $fillable     = $meta['fillable'];
+        $fillableNoFk = $meta['fillableNoFk'] ?? $fillable;
+        $hasUserFk    = $meta['hasUserFk'] ?? false;
+        $userFkModel  = $meta['userFkModel'] ?? null;
 
         // Check if a factory exists for this model
-        $factoryClass   = "Database\\Factories\\{$m}Factory";
-        $hasFactory     = class_exists($factoryClass);
-        $createData     = $hasFactory
-            ? "{$m}::factory()->create()"
-            : "{$m}::create(\$this->validData())";
-        $makeData       = $hasFactory
-            ? "{$m}::factory()->make()->toArray()"
-            : "\$this->validData()";
+        $factoryClass = "Database\\Factories\\{$m}Factory";
+        $hasFactory   = class_exists($factoryClass);
 
-        $softDeleteTests = $softDeletes ? $this->buildSoftDeleteApiTests($m, $var, $route, $createData) : '';
+        // When schema has a user FK, create a user and act as them.
+        // This ensures user_id is available server-side and the test is realistic.
+        $userSetup    = '';
+        $actingAs     = '';
+        $userImport   = '';
+        $createSuffix = '';
+        if ($hasUserFk && $userFkModel) {
+            $userBase   = class_basename($userFkModel);
+            $userImport = "use {$userFkModel};";
+            $userSetup  = "\n        \$user = {$userBase}::factory()->create();";
+            $actingAs   = "\n        \$this->actingAs(\$user);";
+            // Pass user FK to factory so it uses the created user
+            $createSuffix = "->for(\$user)";
+        }
+
+        // For create/show/delete — just create a persisted instance
+        $createData = $hasFactory
+            ? "{$m}::factory(){$createSuffix}->create()"
+            : "{$m}::create(\$this->createData())";
+
+        // For store/update POST data — only send non-FK fillable fields.
+        $postFields   = ! empty($fillableNoFk) ? $fillableNoFk : $fillable;
+        $fillableList = implode(', ', array_map(fn($f) => "'{$f}'", $postFields));
+        $makeData     = $hasFactory
+            ? "Arr::only({$m}::factory()->make()->toArray(), [{$fillableList}])"
+            : "\$this->createData()";
+
+        if (empty($postFields)) {
+            $makeData = $hasFactory ? "{$m}::factory()->raw()" : "\$this->createData()";
+        }
+
+        // destroy assertion differs: soft-delete keeps row in DB
+        $destroyAssertion = $softDeletes
+            ? "\$this->assertSoftDeleted((new {$m})->getTable(), ['id' => \${$var}->id]);"
+            : "\$this->assertDatabaseMissing((new {$m})->getTable(), ['id' => \${$var}->id]);";
+
+        $softDeleteTests = $softDeletes ? $this->buildSoftDeleteApiTests($m, $var, $route, $createData, $userSetup, $actingAs) : '';
+
+        // Helper method for createData fallback (when no factory)
+        $createDataHelper = $hasFactory ? '' : <<<HELPER
+
+    private function createData(): array
+    {
+        return []; // Fill in with valid {$m} data
+    }
+HELPER;
 
         return <<<PHP
 <?php
@@ -798,7 +903,9 @@ namespace Tests\Feature;
 
 use Tests\TestCase;
 use {$model};
+{$userImport}
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Arr;
 use PHPUnit\Framework\Attributes\Test;
 
 /**
@@ -816,7 +923,7 @@ class {$controller}Test extends TestCase
 
     #[Test]
     public function index_returns_paginated_list(): void
-    {
+    {{$userSetup}{$actingAs}
         {$createData};
         {$createData};
 
@@ -830,7 +937,7 @@ class {$controller}Test extends TestCase
 
     #[Test]
     public function store_creates_a_new_{$var}(): void
-    {
+    {{$userSetup}{$actingAs}
         \$data = {$makeData};
 
         \$response = \$this->postJson('/{$route}', \$data);
@@ -843,7 +950,7 @@ class {$controller}Test extends TestCase
 
     #[Test]
     public function store_fails_validation_with_empty_data(): void
-    {
+    {{$userSetup}{$actingAs}
         \$response = \$this->postJson('/{$route}', []);
 
         \$response->assertUnprocessable();
@@ -853,7 +960,7 @@ class {$controller}Test extends TestCase
 
     #[Test]
     public function show_returns_a_single_{$var}(): void
-    {
+    {{$userSetup}{$actingAs}
         \${$var} = {$createData};
 
         \$response = \$this->getJson("/{$route}/{\${$var}->id}");
@@ -872,7 +979,7 @@ class {$controller}Test extends TestCase
 
     #[Test]
     public function update_modifies_an_existing_{$var}(): void
-    {
+    {{$userSetup}{$actingAs}
         \${$var}  = {$createData};
         \$data = {$makeData};
 
@@ -886,19 +993,19 @@ class {$controller}Test extends TestCase
 
     #[Test]
     public function destroy_deletes_a_{$var}(): void
-    {
+    {{$userSetup}{$actingAs}
         \${$var} = {$createData};
 
         \$this->deleteJson("/{$route}/{\${$var}->id}")->assertOk();
 
-        \$this->assertDatabaseMissing((new {$m})->getTable(), ['id' => \${$var}->id]);
+        {$destroyAssertion}
     }
-{$softDeleteTests}
+{$softDeleteTests}{$createDataHelper}
 }
 PHP;
     }
 
-    private function buildSoftDeleteApiTests(string $m, string $var, string $route, string $createData): string
+    private function buildSoftDeleteApiTests(string $m, string $var, string $route, string $createData, string $userSetup = '', string $actingAs = ''): string
     {
         return <<<PHP
 
@@ -906,18 +1013,8 @@ PHP;
     // ── Soft delete / restore ──────────────────────────────────────────────────
 
     #[Test]
-    public function destroy_soft_deletes_a_{$var}(): void
-    {
-        \${$var} = {$createData};
-
-        \$this->deleteJson("/{$route}/{\${$var}->id}")->assertOk();
-
-        \$this->assertSoftDeleted((new {$m})->getTable(), ['id' => \${$var}->id]);
-    }
-
-    #[Test]
     public function restore_recovers_a_soft_deleted_{$var}(): void
-    {
+    {{$userSetup}{$actingAs}
         \${$var} = {$createData};
         \${$var}->delete();
 

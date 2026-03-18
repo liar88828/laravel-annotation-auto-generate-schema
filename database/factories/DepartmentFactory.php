@@ -25,9 +25,18 @@ class DepartmentFactory extends Factory
             'name' => fake()->name(),
             'code' => fake()->text(20),
             'slug' => fake()->slug(),
-            'description' => fake()->optional(0.8)->paragraph() ?? null,
+            'description' => fake()->boolean(80) ? fake()->paragraph() : null,
             'status' => fake()->randomElement(['active', 'inactive']),
             'budget' => fake()->randomFloat(2, 0, 9999999999999),
         ];
+    }
+
+    /**
+     * Store the model bypassing mass assignment so FK columns not in $fillable
+     * (e.g. user_id) are still persisted correctly.
+     */
+    protected function store(iterable $results): void
+    {
+        Department::unguarded(fn () => parent::store($results));
     }
 }

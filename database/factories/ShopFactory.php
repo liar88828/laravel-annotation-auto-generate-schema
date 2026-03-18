@@ -23,8 +23,17 @@ class ShopFactory extends Factory
     {
         return [
             'name' => fake()->name(),
-            'address' => fake()->optional(0.8)->streetAddress() ?? null,
+            'address' => fake()->boolean(80) ? fake()->streetAddress() : null,
             'is_active' => fake()->boolean(),
         ];
+    }
+
+    /**
+     * Store the model bypassing mass assignment so FK columns not in $fillable
+     * (e.g. user_id) are still persisted correctly.
+     */
+    protected function store(iterable $results): void
+    {
+        Shop::unguarded(fn () => parent::store($results));
     }
 }

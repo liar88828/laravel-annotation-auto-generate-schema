@@ -193,11 +193,44 @@ class ModelGenerator
         );
         $relationMethods = $this->buildRelationMethods($relations);
 
-        $traits = array_filter(['HasFactory', 'HasSchema', $usesSoftDeletes ? 'SoftDeletes' : null]);
+        // ── Base class & extra traits from #[EloquentModel] ──────────────
+        $extendFqcn = $modelAttr->extend ?? null;
+        $extraTraits = $modelAttr->traits;   // array of FQCNs
+
+        // Resolve base class
+        if ($extendFqcn) {
+            $baseClass = class_basename($extendFqcn);
+            // Use an alias if it clashes with common names
+            $baseAlias = $baseClass === 'User' ? 'Authenticatable' : $baseClass;
+            $baseImport = "use {$extendFqcn}".($baseAlias !== $baseClass ? " as {$baseAlias}" : '').';';
+            $baseClass = $baseAlias;
+        } else {
+            $baseClass = 'Model';
+            $baseImport = 'use Illuminate\\Database\\Eloquent\\Model;';
+        }
+
+        // Resolve extra trait imports + short names
+        $extraTraitImports = [];
+        $extraTraitNames = [];
+        foreach ($extraTraits as $traitFqcn) {
+            $extraTraitImports[] = "use {$traitFqcn};";
+            $extraTraitNames[] = class_basename($traitFqcn);
+        }
+
+        $traits = array_filter([
+            'HasFactory',
+            'HasSchema',
+            $usesSoftDeletes ? 'SoftDeletes' : null,
+            ...$extraTraitNames,
+        ]);
         $traitLine = '    use '.implode(', ', $traits).';';
         $schemaShort = class_basename($this->schemaClass);
 
-        return "<?php\n\nnamespace {$namespace};\n\nuse Illuminate\\Database\\Eloquent\\Model;\nuse Illuminate\\Database\\Eloquent\\Factories\\HasFactory;\nuse App\\Attributes\\Model\\UsesSchema;\nuse App\\Traits\\HasSchema;\n{$uses}\n#[UsesSchema({$schemaShort}::class)]\nclass {$modelBase} extends Model\n{\n{$traitLine}\n\n{$classProps}\n{$relationMethods}\n}\n";
+        $extraImportBlock = ! empty($extraTraitImports)
+            ? implode("\n", $extraTraitImports)."\n"
+            : '';
+
+        return "<?php\n\nnamespace {$namespace};\n\n{$baseImport}\n{$extraImportBlock}use Illuminate\\Database\\Eloquent\\Factories\\HasFactory;\nuse App\\Attributes\\Model\\UsesSchema;\nuse App\\Traits\\HasSchema;\n{$uses}\n#[UsesSchema({$schemaShort}::class)]\nclass {$modelBase} extends {$baseClass}\n{\n{$traitLine}\n\n{$classProps}\n{$relationMethods}\n}\n";
     }
 
     // ── Class property block ──────────────────────────────────────────────
@@ -272,12 +305,28 @@ class ModelGenerator
 
     private function renderCasts(array $casts): string
     {
+        // Eloquent built-in string cast keywords — always quoted, never ::class
+        $builtinCasts = [
+            'integer', 'int', 'real', 'float', 'double', 'decimal',
+            'string', 'boolean', 'bool', 'object', 'array', 'json',
+            'collection', 'date', 'datetime', 'immutable_date',
+            'immutable_datetime', 'timestamp', 'encrypted', 'hashed',
+            'Illuminate\Database\Eloquent\Casts\AsStringable',
+        ];
+
         $lines = [];
         foreach ($casts as $field => $type) {
-            // Distinguish class-based casts from string casts
-            $value = class_exists($type)
+            // Use ::class only for real custom cast classes (not built-in keywords)
+            $isBuiltin = in_array(strtolower($type), array_map('strtolower', $builtinCasts))
+                || str_starts_with($type, 'decimal:')
+                || str_starts_with($type, 'date:')
+                || str_starts_with($type, 'datetime:')
+                || str_starts_with($type, 'encrypted:');
+
+            $value = (! $isBuiltin && class_exists($type))
                 ? "{$type}::class"
                 : "'{$type}'";
+
             $lines[] = "        '{$field}' => {$value},";
         }
         $body = implode(PHP_EOL, $lines);

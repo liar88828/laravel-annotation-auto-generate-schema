@@ -43,7 +43,6 @@ class ShopController extends Controller
     public function store(Request $request): JsonResponse
     {
         Shop::schemaValidateOrFail($request->all());
-
         $shop = Shop::create($request->only(['name', 'address', 'is_active']));
 
         return response()->json($shop->load(['products']), Response::HTTP_CREATED);
@@ -63,7 +62,6 @@ class ShopController extends Controller
     public function update(Request $request, Shop $shop): JsonResponse
     {
         $shop->schemaValidateForUpdate($request->all());
-
         $shop->update($request->only(['name', 'address', 'is_active']));
 
         return response()->json($shop->fresh()->load(['products']));

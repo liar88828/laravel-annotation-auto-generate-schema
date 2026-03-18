@@ -23,7 +23,16 @@ class HistoryFactory extends Factory
     {
         return [
             'action' => fake()->text(100),
-            'description' => fake()->optional(0.8)->paragraph() ?? null,
+            'description' => fake()->boolean(80) ? fake()->paragraph() : null,
         ];
+    }
+
+    /**
+     * Store the model bypassing mass assignment so FK columns not in $fillable
+     * (e.g. user_id) are still persisted correctly.
+     */
+    protected function store(iterable $results): void
+    {
+        History::unguarded(fn () => parent::store($results));
     }
 }

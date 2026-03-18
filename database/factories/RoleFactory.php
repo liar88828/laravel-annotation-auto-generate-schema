@@ -25,9 +25,18 @@ class RoleFactory extends Factory
             'public_id' => (string) \Illuminate\Support\Str::uuid(),
             'name' => fake()->name(),
             'status' => fake()->optional(0.8)->randomElement(['active', 'inactive', 'suspended']),
-            'age' => fake()->optional(0.8)->numberBetween(18, 80) ?? null,
-            'born_at' => fake()->optional(0.8)->dateTime() ?? null,
-            'department_id' => fake()->boolean(80) ? \App\Models\Department::factory()->create()->id : null,
+            'age' => fake()->boolean(80) ? fake()->numberBetween(18, 80) : null,
+            'born_at' => fake()->boolean(80) ? fake()->dateTime() : null,
+            'department_id' => fake()->boolean(80) ? \App\Models\Department::factory()->create()->getKey() : null,
         ];
+    }
+
+    /**
+     * Store the model bypassing mass assignment so FK columns not in $fillable
+     * (e.g. user_id) are still persisted correctly.
+     */
+    protected function store(iterable $results): void
+    {
+        Role::unguarded(fn () => parent::store($results));
     }
 }

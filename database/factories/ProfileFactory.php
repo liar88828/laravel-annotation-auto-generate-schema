@@ -22,11 +22,21 @@ class ProfileFactory extends Factory
     public function definition(): array
     {
         return [
-            'bio' => fake()->optional(0.8)->paragraph() ?? null,
-            'avatar' => fake()->optional(0.8)->imageUrl() ?? null,
-            'phone' => fake()->optional(0.8)->phoneNumber() ?? null,
-            'address' => fake()->optional(0.8)->streetAddress() ?? null,
-            'birth_date' => fake()->optional(0.8)->date() ?? null,
+            'role_id' => \App\Models\Role::factory()->create()->getKey(),
+            'bio' => fake()->boolean(80) ? fake()->paragraph() : null,
+            'avatar' => fake()->boolean(80) ? fake()->imageUrl() : null,
+            'phone' => fake()->boolean(80) ? fake()->phoneNumber() : null,
+            'address' => fake()->boolean(80) ? fake()->streetAddress() : null,
+            'birth_date' => fake()->boolean(80) ? fake()->date() : null,
         ];
+    }
+
+    /**
+     * Store the model bypassing mass assignment so FK columns not in $fillable
+     * (e.g. user_id) are still persisted correctly.
+     */
+    protected function store(iterable $results): void
+    {
+        Profile::unguarded(fn () => parent::store($results));
     }
 }

@@ -3,8 +3,11 @@
 namespace App\Console\Commands;
 
 use App\Attributes\Migration\BelongsTo as BelongsToAttr;
+use App\Attributes\Migration\BelongsToMany as BelongsToManyAttr;
 use App\Attributes\Migration\Column;
 use App\Attributes\Migration\ForeignSchema as ForeignSchemaAttr;
+use App\Attributes\Migration\HasMany as HasManyAttr;
+use App\Attributes\Migration\HasOne as HasOneAttr;
 use App\Attributes\Migration\PrimaryKey;
 use App\Attributes\Model\Cast;
 use App\Attributes\Model\EloquentModel;
@@ -174,11 +177,6 @@ class SchemaFactory extends Command
                 continue;
             }
 
-            // Only generate factory values for fillable fields
-            if (empty($prop->getAttributes(Fillable::class))) {
-                continue;
-            }
-
             $name = $prop->getName();
             $colAttrs = $prop->getAttributes(Column::class);
             $col = $colAttrs ? $colAttrs[0]->newInstance() : null;
@@ -187,39 +185,68 @@ class SchemaFactory extends Command
             $colType = $col?->type ?? 'string';
             $precision = $col?->precision;
             $scale = $col?->scale ?? 2;
+            $isFillable = ! empty($prop->getAttributes(Fillable::class));
 
-            // ── #[ForeignSchema] → use related model's factory ────────────
+            // ── Pure relation properties (HasOne/HasMany/BelongsToMany) ────────
+            // These have no #[Column] — they are Eloquent relations, not columns.
+            // Including them would generate faker values for non-existent columns.
+            $hasForeignSchema = ! empty($prop->getAttributes(ForeignSchemaAttr::class));
+            $hasColumn = ! empty($colAttrs);
+            $isRelationOnly = ! $hasColumn && ! $hasForeignSchema && (
+                ! empty($prop->getAttributes(HasOneAttr::class))
+                || ! empty($prop->getAttributes(HasManyAttr::class))
+                || ! empty($prop->getAttributes(BelongsToManyAttr::class))
+            );
+
+            if ($isRelationOnly) {
+                continue;
+            }
+
+            // Also skip properties that have no Column AND no FK annotation at all
+            // (e.g. virtual/appended properties like $full_name, $profile)
+            if (! $hasColumn && ! $hasForeignSchema) {
+                continue;
+            }
+
+            // ── #[ForeignSchema] → always include (NOT NULL FK must be set) ──
             $fsAttrs = $prop->getAttributes(ForeignSchemaAttr::class);
             if (! empty($fsAttrs)) {
-                $relatedSchema = $fsAttrs[0]->newInstance()->schema;
+                $fs = $fsAttrs[0]->newInstance();
+                $relatedSchema = $fs->schema;
                 $relatedModel = preg_replace('/Schema$/', '', class_basename($relatedSchema));
-                $factoryClass = "Database\\Factories\\{$relatedModel}Factory";
-                $faker = class_exists($factoryClass)
-                    ? "\\App\\Models\\{$relatedModel}::factory()->create()->id"
-                    : "\\App\\Models\\{$relatedModel}::factory()->create()->getKey()";
+                $faker = "\\App\\Models\\{$relatedModel}::factory()->create()->getKey()";
                 if ($nullable) {
-                    $faker = "fake()->boolean(80) ? {$faker} : null";
+                    $faker = "fake()->boolean(80) ? \\App\\Models\\{$relatedModel}::factory()->create()->getKey() : null";
                 }
                 $fields[$name] = ['faker' => $faker, 'nullable' => $nullable, 'default' => $default];
 
                 continue;
             }
 
-            // ── #[BelongsTo] on an _id column → use related model's factory
+            // ── #[BelongsTo] on _id column → always include for NOT NULL FKs ─
             $btAttrs = $prop->getAttributes(BelongsToAttr::class);
             if (! empty($btAttrs) && str_ends_with($name, '_id')) {
                 $relatedSchema = $btAttrs[0]->newInstance()->related;
                 $relatedModel = preg_replace('/Schema$/', '', class_basename($relatedSchema));
-                $factoryClass = "Database\\Factories\\{$relatedModel}Factory";
-                $faker = class_exists($factoryClass)
-                    ? "\\App\\Models\\{$relatedModel}::factory()->create()->id"
-                    : "\\App\\Models\\{$relatedModel}::factory()->create()->getKey()";
+                $faker = "\\App\\Models\\{$relatedModel}::factory()->create()->getKey()";
                 if ($nullable) {
-                    $faker = "fake()->boolean(80) ? {$faker} : null";
+                    $faker = "fake()->boolean(80) ? \\App\\Models\\{$relatedModel}::factory()->create()->getKey() : null";
                 }
                 $fields[$name] = ['faker' => $faker, 'nullable' => $nullable, 'default' => $default];
 
                 continue;
+            }
+
+            // ── Non-fillable non-FK columns with a default — skip (DB handles it)
+            // ── Non-fillable non-FK columns without default and NOT NULL — include
+            //    so the factory doesn't produce an invalid row
+            if (! $isFillable) {
+                // Include if NOT NULL and no default — otherwise the insert will fail
+                $hasDefault = $default !== null || $nullable;
+                if ($hasDefault) {
+                    continue; // DB or Eloquent default handles it
+                }
+                // Fall through to include with a sensible faker value
             }
 
             $faker = $this->fakerExpression($name, $colType, $prop, $nullable, $default, $precision, $scale);
@@ -260,16 +287,18 @@ class SchemaFactory extends Command
                 return $expr;
             }
 
-            // If the expression is a plain value (integer, null, quoted string)
-            // rather than a fake() call, just wrap in a ternary directly
-            if (! str_starts_with($expr, 'fake()')
-                && ! str_starts_with($expr, '(string)')
-                && ! str_starts_with($expr, 'bcrypt(')
-            ) {
-                return "fake()->boolean(80) ? {$expr} : null";
+            // Use ternary for any expression that can't be safely passed to
+            // optional()->method() — this includes chained calls like
+            // dateTime()->format('...'), ::uuid(), bcrypt(), (string) casts, etc.
+            $canUseOptional = str_starts_with($expr, 'fake()->')
+                && ! str_contains($expr, ')->')  // no chained calls after the faker method
+                && ! str_contains($expr, '::');
+
+            if ($canUseOptional) {
+                return "fake()->optional(0.8)->{$this->unwrapFaker($expr)} ?? ".$this->phpValue($default);
             }
 
-            return "fake()->optional(0.8)->{$this->unwrapFaker($expr)} ?? ".$this->phpValue($default);
+            return "fake()->boolean(80) ? {$expr} : null";
         };
 
         // ── #[In(...)] — pick from allowed values ─────────────────────────────
@@ -339,11 +368,11 @@ class SchemaFactory extends Command
             in_array($type, ['decimal', 'float', 'double']) => "fake()->randomFloat({$scale}, ".($min ?? 0).', '.($max ?? (pow(10, ($precision ?? 10) - $scale) - 1)).')',
 
             // ── Date / Time ───────────────────────────────────────────────────
-            $type === 'date' => 'fake()->date()',
+            $type === 'date' => 'fake()->date()',      // already returns string 'Y-m-d'
 
-            $type === 'time' => 'fake()->time()',
+            $type === 'time' => 'fake()->time()',      // already returns string 'H:i:s'
 
-            in_array($type, ['datetime', 'timestamp', 'dateTime']) => 'fake()->dateTime()',
+            in_array($type, ['datetime', 'timestamp', 'dateTime']) => "fake()->dateTime()->format('Y-m-d H:i:s')",   // cast to string
 
             $type === 'year' => '(string) fake()->year()',
 
@@ -489,6 +518,15 @@ class {$modelName}Factory extends Factory
         return [
 {$definition}
         ];
+    }
+
+    /**
+     * Store the model bypassing mass assignment so FK columns not in \$fillable
+     * (e.g. user_id) are still persisted correctly.
+     */
+    protected function store(iterable \$results): void
+    {
+        {$modelBase}::unguarded(fn () => parent::store(\$results));
     }
 }
 PHP;
