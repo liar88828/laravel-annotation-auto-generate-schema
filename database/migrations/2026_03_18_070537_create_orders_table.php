@@ -1,15 +1,22 @@
 <?php
 
-use App\Schema\OrderSchema;
-use App\Traits\RunsSchemaMigration;
 use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    use RunsSchemaMigration;
-
-    protected function schema(): string
+    public function up(): void
     {
-        return OrderSchema::class;
+        Schema::create('orders', function (Blueprint $table) {
+            $table->uuid('id')->primary();
+            $table->string('name', 100);
+            $table->timestamps();
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('orders');
     }
 };

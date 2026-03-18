@@ -2,13 +2,13 @@
 
 namespace App\Models;
 
-use App\Attributes\Model\UsesSchema;
-use App\Schema\TransactionSchema;
-use App\Traits\HasSchema;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Attributes\Model\UsesSchema;
+use App\Traits\HasSchema;
+use App\Schema\TransactionSchema;
+use App\Models\Product;
+use App\Models\Shop;
 #[UsesSchema(TransactionSchema::class)]
 class Transaction extends Model
 {
@@ -29,14 +29,13 @@ class Transaction extends Model
         'status',
         'notes',
     ];
-
-    public function product(): BelongsTo
+    public function product(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
-        return $this->belongsTo(Product::class);
+        return $this->belongsTo(\App\Models\Product::class);
     }
 
-    public function shop(): BelongsTo
+    public function shop(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
-        return $this->belongsTo(Shop::class);
+        return $this->belongsTo(\App\Models\Shop::class);
     }
 }

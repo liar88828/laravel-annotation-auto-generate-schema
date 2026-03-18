@@ -40,7 +40,6 @@ class UserExample extends Model
     ];
 
     protected $casts = [
-        'password' => 'hashed',
         'is_verified' => 'boolean',
         'born_at' => 'date:Y-m-d',
         'settings' => 'array',

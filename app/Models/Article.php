@@ -7,9 +7,15 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use App\Attributes\Model\UsesSchema;
 use App\Traits\HasSchema;
 use App\Schema\ArticleSchema;
-
 #[UsesSchema(ArticleSchema::class)]
 class Article extends Model
 {
-    use HasSchema,HasFactory;
+    use HasFactory, HasSchema;
+
+    protected $table = 'articles';
+
+    protected $keyType = 'string';
+
+    public $incrementing = false;
+
 }

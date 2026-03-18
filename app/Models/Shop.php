@@ -2,14 +2,13 @@
 
 namespace App\Models;
 
-use App\Attributes\Model\UsesSchema;
-use App\Schema\ShopSchema;
-use App\Traits\HasSchema;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Attributes\Model\UsesSchema;
+use App\Traits\HasSchema;
 use Illuminate\Database\Eloquent\SoftDeletes;
-
+use App\Schema\ShopSchema;
+use App\Models\Product;
 #[UsesSchema(ShopSchema::class)]
 class Shop extends Model
 {
@@ -22,9 +21,8 @@ class Shop extends Model
         'address',
         'is_active',
     ];
-
-    public function products(): HasMany
+    public function products(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
-        return $this->hasMany(Product::class, 'shop_id');
+        return $this->hasMany(\App\Models\Product::class, 'shop_id');
     }
 }

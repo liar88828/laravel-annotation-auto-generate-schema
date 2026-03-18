@@ -2,27 +2,27 @@
 
 namespace Database\Factories;
 
-use App\Models\Order;
+use App\Models\Article;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 
 /**
- * OrderFactory
+ * ArticleFactory
  *
  * Generated from schema annotations.
  * Faker calls are derived from #[Column] type, field name heuristics,
  * and validation attributes (#[In], #[Email], #[Uuid], #[Min], #[Max]).
  *
- * @extends Factory<Order>
+ * @extends Factory<Article>
  */
-class OrderFactory extends Factory
+class ArticleFactory extends Factory
 {
-    protected $model = Order::class;
+    protected $model = Article::class;
 
     public function definition(): array
     {
         return [
-            'name' => fake()->name(),
+
         ];
     }
 }

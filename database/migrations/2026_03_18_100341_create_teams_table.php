@@ -1,14 +1,21 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
-use App\Traits\RunsSchemaMigration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    use RunsSchemaMigration;
-
-    protected function schema(): string
+    public function up(): void
     {
-        return \App\Schema\TeamSchema::class;
+        Schema::create('teams', function (Blueprint $table) {
+            $table->uuid('id')->primary();
+            $table->timestamps();
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('teams');
     }
 };

@@ -2,12 +2,11 @@
 
 namespace App\Models;
 
-use App\Attributes\Model\UsesSchema;
-use App\Schema\OrderSchema;
-use App\Traits\HasSchema;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Attributes\Model\UsesSchema;
+use App\Traits\HasSchema;
+use App\Schema\OrderSchema;
 #[UsesSchema(OrderSchema::class)]
 class Order extends Model
 {
@@ -22,4 +21,5 @@ class Order extends Model
     protected $fillable = [
         'name',
     ];
+
 }

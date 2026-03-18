@@ -7,9 +7,15 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use App\Attributes\Model\UsesSchema;
 use App\Traits\HasSchema;
 use App\Schema\DepartmentSchema;
-
 #[UsesSchema(DepartmentSchema::class)]
 class Department extends Model
 {
-    use HasSchema,HasFactory;
+    use HasFactory, HasSchema;
+
+    protected $table = 'departments';
+
+    protected $keyType = 'string';
+
+    public $incrementing = false;
+
 }

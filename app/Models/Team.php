@@ -7,9 +7,15 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use App\Attributes\Model\UsesSchema;
 use App\Traits\HasSchema;
 use App\Schema\TeamSchema;
-
 #[UsesSchema(TeamSchema::class)]
 class Team extends Model
 {
-    use HasSchema,HasFactory;
+    use HasFactory, HasSchema;
+
+    protected $table = 'teams';
+
+    protected $keyType = 'string';
+
+    public $incrementing = false;
+
 }
