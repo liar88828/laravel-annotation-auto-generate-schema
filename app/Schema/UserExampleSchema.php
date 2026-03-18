@@ -138,8 +138,8 @@ class UserExampleSchema
 
     // ── HasMany ────────────────────────────────────────────────────────────
 
-    #[HasMany(related: PostSchema::class, foreignKey: 'user_id')]
-    public array $posts;
+    #[HasMany(related: ArticleSchema::class, foreignKey: 'user_id')]
+    public array $articles;
 
     // ── BelongsToMany ──────────────────────────────────────────────────────
 
