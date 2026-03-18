@@ -18,4 +18,10 @@ class Team extends Model
 
     public $incrementing = false;
 
+    protected $fillable = [
+        'name',
+        'slug',
+        'description',
+    ];
+
 }

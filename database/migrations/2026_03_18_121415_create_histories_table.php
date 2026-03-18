@@ -9,6 +9,6 @@ return new class extends Migration
 
     protected function schema(): string
     {
-        return \App\Schema\ProfileSchema::class;
+        return \App\Schema\HistorySchema::class;
     }
 };

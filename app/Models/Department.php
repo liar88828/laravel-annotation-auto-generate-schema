@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use App\Attributes\Model\UsesSchema;
 use App\Traits\HasSchema;
 use App\Schema\DepartmentSchema;
+use App\Models\Role;
 #[UsesSchema(DepartmentSchema::class)]
 class Department extends Model
 {
@@ -14,8 +15,20 @@ class Department extends Model
 
     protected $table = 'departments';
 
-    protected $keyType = 'string';
+    protected $fillable = [
+        'name',
+        'code',
+        'slug',
+        'description',
+        'status',
+        'budget',
+    ];
 
-    public $incrementing = false;
-
+    protected $casts = [
+        'budget' => 'decimal:2',
+    ];
+    public function roles(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(\App\Models\Role::class, 'department_id');
+    }
 }

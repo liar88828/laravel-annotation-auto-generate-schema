@@ -28,13 +28,52 @@ class TeamTest extends TestCase
     #[Test]
     public function it_has_the_expected_columns(): void
     {
+        $this->assertTrue(Schema::hasColumn('teams', 'name'), "Column [name] missing.");
+        $this->assertTrue(Schema::hasColumn('teams', 'slug'), "Column [slug] missing.");
+        $this->assertTrue(Schema::hasColumn('teams', 'description'), "Column [description] missing.");
+    }
 
+    #[Test]
+    public function model_fillable_is_resolved_from_schema(): void
+    {
+        $model = new Team;
+        $this->assertContains('name', $model->getFillable(), "[name] should be fillable.");
+        $this->assertContains('slug', $model->getFillable(), "[slug] should be fillable.");
+        $this->assertContains('description', $model->getFillable(), "[description] should be fillable.");
     }
 
     #[Test]
     public function model_table_is_resolved_from_schema(): void
     {
         $this->assertSame('teams', (new Team)->getTable());
+    }
+
+    #[Test]
+    public function validation_fails_when_required_fields_are_missing(): void
+    {
+        $errors = $this->schemaValidate([]);
+        $this->assertTrue($errors->has('name'), "[name] should fail required.");
+    }
+
+    #[Test]
+    public function validation_passes_with_valid_data(): void
+    {
+        $errors = $this->schemaValidate($this->validData());
+
+        $this->assertTrue($errors->isEmpty());
+    }
+
+    #[Test]
+    public function update_validation_ignores_own_record_in_unique_check(): void
+    {
+        $model  = Team::create($this->createData());
+        $errors = $this->schemaValidate(
+            ['slug' => $model->slug],
+            ignoreUniqueFor: ['slug' => $model->id],
+            skipMissing: true,
+        );
+
+        $this->assertTrue($errors->isEmpty());
     }
 
     #[Test]
@@ -54,7 +93,9 @@ class TeamTest extends TestCase
     private function validData(): array
     {
         return [
-
+            'name' => 'aa',
+            'slug' => 'aa',
+            'description' => null,
         ];
     }
 

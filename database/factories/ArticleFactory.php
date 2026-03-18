@@ -22,7 +22,13 @@ class ArticleFactory extends Factory
     public function definition(): array
     {
         return [
-
+            'user_id' => \App\Models\User::factory()->create()->id,
+            'title' => fake()->sentence(3),
+            'slug' => fake()->slug(),
+            'content' => fake()->paragraphs(3, true),
+            'excerpt' => fake()->optional(0.8)->text(255) ?? null,
+            'status' => fake()->randomElement(['draft', 'published', 'archived']),
+            'published_at' => fake()->optional(0.8)->dateTime() ?? null,
         ];
     }
 }

@@ -3,57 +3,71 @@
 namespace App\Schema;
 
 // ── Migration ──────────────────────────────────────────────────────────────
-use App\Attributes\Migration\Table;
 use App\Attributes\Migration\Column;
+use App\Attributes\Migration\HasMany;
 use App\Attributes\Migration\PrimaryKey;
-// use App\Attributes\Migration\ForeignKey;
-// use App\Attributes\Migration\HasOne;
-// use App\Attributes\Migration\HasMany;
-// use App\Attributes\Migration\BelongsTo;
-// use App\Attributes\Migration\BelongsToMany;
-
+use App\Attributes\Migration\Table;
 // ── Validation ─────────────────────────────────────────────────────────────
-use App\Attributes\Validation\Required;
-use App\Attributes\Validation\Min;
-use App\Attributes\Validation\Max;
-// use App\Attributes\Validation\Email;
-// use App\Attributes\Validation\Numeric;
-// use App\Attributes\Validation\In;
-// use App\Attributes\Validation\Unique;
-// use App\Attributes\Validation\Confirmed;
-// use App\Attributes\Validation\Regex;
-use App\Attributes\Validation\Uuid;
-
-// ── Model ──────────────────────────────────────────────────────────────────
+use App\Attributes\Model\Cast;
 use App\Attributes\Model\EloquentModel;
 use App\Attributes\Model\Fillable;
-// use App\Attributes\Model\Hidden;
-// use App\Attributes\Model\Cast;
-// use App\Attributes\Model\Appended;
-
-// NOTE: The model class name is 'Department' (without 'Schema' suffix).
-// This import is required so PHP resolves Department::class to App\Models\Department
-// and not to App\Schema\Department.
+use App\Attributes\Validation\In;
+use App\Attributes\Validation\Max;
+// ── Model ──────────────────────────────────────────────────────────────────
+use App\Attributes\Validation\Min;
+use App\Attributes\Validation\Required;
+use App\Attributes\Validation\Unique;
+// Model
 use App\Models\Department;
 
 #[EloquentModel(model: Department::class)]
 #[Table(name: 'departments', timestamps: true, softDeletes: false)]
 class DepartmentSchema
 {
-    // ── Primary key (UUID v4) ──────────────────────────────────────────────
-    // $incrementing = false and $keyType = 'string' are set automatically
-    // by HasSchema when it reads #[PrimaryKey(type: 'uuid')].
+    // ── Primary Key ────────────────────────────────────────────────────────
+    #[PrimaryKey(type: 'bigIncrements')]
+    public int $id;
 
-    #[PrimaryKey(type: 'uuid')]
-    #[Uuid(version: 4)]
-    public string $id;
+    // ── Name ───────────────────────────────────────────────────────────────
+    #[Column(type: 'string', length: 100, nullable: false)]
+    #[Fillable]
+    #[Required(message: 'Department name is required.')]
+    #[Min(2, message: 'Name must be at least 2 characters.')]
+    #[Max(100, message: 'Name must not exceed 100 characters.')]
+    public string $name;
 
-    // ── Add your columns below ─────────────────────────────────────────────
-    //
-    // #[Column(type: 'string', length: 100, nullable: false)]
-    // #[Fillable]
-    // #[Required(message: 'DepartmentSchema name is required.')]
-    // #[Min(2,   message: 'Name must be at least 2 characters.')]
-    // #[Max(100, message: 'Name must not exceed 100 characters.')]
-    // public string $name;
+    // ── Code (unique short identifier) ─────────────────────────────────────
+    #[Column(type: 'string', length: 20, unique: true, nullable: false)]
+    #[Fillable]
+    #[Required]
+    #[Max(20)]
+    #[Unique(table: 'departments', column: 'code')]
+    public string $code;
+
+    // ── Slug ───────────────────────────────────────────────────────────────
+    #[Column(type: 'string', length: 120, unique: true)]
+    #[Fillable]
+    #[Unique(table: 'departments', column: 'slug')]
+    public string $slug;
+
+    // ── Description ────────────────────────────────────────────────────────
+    #[Column(type: 'text', nullable: true)]
+    #[Fillable]
+    public ?string $description = null;
+
+    // ── Status ─────────────────────────────────────────────────────────────
+    #[Column(type: 'string', length: 20, default: 'active')]
+    #[Fillable]
+    #[In('active', 'inactive')]
+    public string $status = 'active';
+
+    // ── Budget ─────────────────────────────────────────────────────────────
+    #[Column(type: 'decimal', precision: 15, scale: 2, default: 0)]
+    #[Fillable]
+    #[Cast('decimal:2')]
+    public float $budget = 0;
+
+    // ── HasMany Users (Relation Example) ───────────────────────────────────
+    #[HasMany(related: RoleSchema::class, foreignKey: 'department_id')]
+    public array $roles;
 }

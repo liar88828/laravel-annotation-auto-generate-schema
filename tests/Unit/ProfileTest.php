@@ -28,7 +28,31 @@ class ProfileTest extends TestCase
     #[Test]
     public function it_has_the_expected_columns(): void
     {
+        $this->assertTrue(Schema::hasColumn('profiles', 'role_id'), "Column [role_id] missing.");
+        $this->assertTrue(Schema::hasColumn('profiles', 'bio'), "Column [bio] missing.");
+        $this->assertTrue(Schema::hasColumn('profiles', 'avatar'), "Column [avatar] missing.");
+        $this->assertTrue(Schema::hasColumn('profiles', 'phone'), "Column [phone] missing.");
+        $this->assertTrue(Schema::hasColumn('profiles', 'address'), "Column [address] missing.");
+        $this->assertTrue(Schema::hasColumn('profiles', 'birth_date'), "Column [birth_date] missing.");
+    }
 
+    #[Test]
+    public function model_fillable_is_resolved_from_schema(): void
+    {
+        $model = new Profile;
+        $this->assertContains('bio', $model->getFillable(), "[bio] should be fillable.");
+        $this->assertContains('avatar', $model->getFillable(), "[avatar] should be fillable.");
+        $this->assertContains('phone', $model->getFillable(), "[phone] should be fillable.");
+        $this->assertContains('address', $model->getFillable(), "[address] should be fillable.");
+        $this->assertContains('birth_date', $model->getFillable(), "[birth_date] should be fillable.");
+    }
+
+    #[Test]
+    public function model_casts_are_resolved_from_schema(): void
+    {
+        $casts = (new Profile)->getCasts();
+        $this->assertArrayHasKey('birth_date', $casts);
+        $this->assertSame('date:Y-m-d', $casts['birth_date']);
     }
 
     #[Test]
@@ -54,7 +78,11 @@ class ProfileTest extends TestCase
     private function validData(): array
     {
         return [
-
+            'bio' => null,
+            'avatar' => null,
+            'phone' => null,
+            'address' => null,
+            'birth_date' => now()->toDateString(),
         ];
     }
 

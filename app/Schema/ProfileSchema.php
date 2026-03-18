@@ -6,54 +6,60 @@ namespace App\Schema;
 use App\Attributes\Migration\Table;
 use App\Attributes\Migration\Column;
 use App\Attributes\Migration\PrimaryKey;
-// use App\Attributes\Migration\ForeignKey;
-// use App\Attributes\Migration\HasOne;
-// use App\Attributes\Migration\HasMany;
-// use App\Attributes\Migration\BelongsTo;
-// use App\Attributes\Migration\BelongsToMany;
+use App\Attributes\Migration\ForeignKey;
+use App\Attributes\Migration\BelongsTo;
 
 // ── Validation ─────────────────────────────────────────────────────────────
-use App\Attributes\Validation\Required;
-use App\Attributes\Validation\Min;
 use App\Attributes\Validation\Max;
-// use App\Attributes\Validation\Email;
-// use App\Attributes\Validation\Numeric;
-// use App\Attributes\Validation\In;
-// use App\Attributes\Validation\Unique;
-// use App\Attributes\Validation\Confirmed;
-// use App\Attributes\Validation\Regex;
 use App\Attributes\Validation\Uuid;
 
 // ── Model ──────────────────────────────────────────────────────────────────
 use App\Attributes\Model\EloquentModel;
 use App\Attributes\Model\Fillable;
-// use App\Attributes\Model\Hidden;
-// use App\Attributes\Model\Cast;
-// use App\Attributes\Model\Appended;
+use App\Attributes\Model\Cast;
 
-// NOTE: The model class name is 'Profile' (without 'Schema' suffix).
-// This import is required so PHP resolves Profile::class to App\Models\Profile
-// and not to App\Schema\Profile.
+// Model
 use App\Models\Profile;
 
 #[EloquentModel(model: Profile::class)]
 #[Table(name: 'profiles', timestamps: true, softDeletes: false)]
 class ProfileSchema
 {
-    // ── Primary key (UUID v4) ──────────────────────────────────────────────
-    // $incrementing = false and $keyType = 'string' are set automatically
-    // by HasSchema when it reads #[PrimaryKey(type: 'uuid')].
-
+    // ── Primary Key (UUID) ─────────────────────────────────────────────────
     #[PrimaryKey(type: 'uuid')]
     #[Uuid(version: 4)]
     public string $id;
 
-    // ── Add your columns below ─────────────────────────────────────────────
-    //
-    // #[Column(type: 'string', length: 100, nullable: false)]
-    // #[Fillable]
-    // #[Required(message: 'ProfileSchema name is required.')]
-    // #[Min(2,   message: 'Name must be at least 2 characters.')]
-    // #[Max(100, message: 'Name must not exceed 100 characters.')]
-    // public string $name;
+    // ── Role Relation (based on your current RoleSchema) ────────────────────
+    #[Column(type: 'unsignedBigInteger', nullable: false, index: true, unique: true)]
+    #[ForeignKey(references: 'id', on: 'roles', onDelete: 'cascade')]
+    #[BelongsTo(related: RoleSchema::class)]
+    public int $role_id;
+
+    // ── Bio ────────────────────────────────────────────────────────────────
+    #[Column(type: 'string', length: 255, nullable: true)]
+    #[Fillable]
+    #[Max(255)]
+    public ?string $bio = null;
+
+    // ── Avatar ─────────────────────────────────────────────────────────────
+    #[Column(type: 'string', length: 255, nullable: true)]
+    #[Fillable]
+    public ?string $avatar = null;
+
+    // ── Phone ──────────────────────────────────────────────────────────────
+    #[Column(type: 'string', length: 20, nullable: true)]
+    #[Fillable]
+    public ?string $phone = null;
+
+    // ── Address ────────────────────────────────────────────────────────────
+    #[Column(type: 'text', nullable: true)]
+    #[Fillable]
+    public ?string $address = null;
+
+    // ── Birth Date ─────────────────────────────────────────────────────────
+    #[Column(type: 'date', nullable: true)]
+    #[Fillable]
+    #[Cast('date:Y-m-d')]
+    public ?string $birth_date = null;
 }

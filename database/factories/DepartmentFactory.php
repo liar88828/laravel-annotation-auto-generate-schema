@@ -22,7 +22,12 @@ class DepartmentFactory extends Factory
     public function definition(): array
     {
         return [
-
+            'name' => fake()->name(),
+            'code' => fake()->text(20),
+            'slug' => fake()->slug(),
+            'description' => fake()->optional(0.8)->paragraph() ?? null,
+            'status' => fake()->randomElement(['active', 'inactive']),
+            'budget' => fake()->randomFloat(2, 0, 9999999999999),
         ];
     }
 }

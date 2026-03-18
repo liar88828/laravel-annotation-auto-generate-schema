@@ -22,7 +22,11 @@ class ProfileFactory extends Factory
     public function definition(): array
     {
         return [
-
+            'bio' => fake()->optional(0.8)->paragraph() ?? null,
+            'avatar' => fake()->optional(0.8)->imageUrl() ?? null,
+            'phone' => fake()->optional(0.8)->phoneNumber() ?? null,
+            'address' => fake()->optional(0.8)->streetAddress() ?? null,
+            'birth_date' => fake()->optional(0.8)->date() ?? null,
         ];
     }
 }

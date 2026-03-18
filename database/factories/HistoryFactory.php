@@ -2,28 +2,27 @@
 
 namespace Database\Factories;
 
-use App\Models\Team;
+use App\Models\History;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 
 /**
- * TeamFactory
+ * HistoryFactory
  *
  * Generated from schema annotations.
  * Faker calls are derived from #[Column] type, field name heuristics,
  * and validation attributes (#[In], #[Email], #[Uuid], #[Min], #[Max]).
  *
- * @extends Factory<Team>
+ * @extends Factory<History>
  */
-class TeamFactory extends Factory
+class HistoryFactory extends Factory
 {
-    protected $model = Team::class;
+    protected $model = History::class;
 
     public function definition(): array
     {
         return [
-            'name' => fake()->name(),
-            'slug' => fake()->slug(),
+            'action' => fake()->text(100),
             'description' => fake()->optional(0.8)->paragraph() ?? null,
         ];
     }

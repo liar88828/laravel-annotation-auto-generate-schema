@@ -28,13 +28,62 @@ class ArticleTest extends TestCase
     #[Test]
     public function it_has_the_expected_columns(): void
     {
+        $this->assertTrue(Schema::hasColumn('articles', 'user_id'), "Column [user_id] missing.");
+        $this->assertTrue(Schema::hasColumn('articles', 'title'), "Column [title] missing.");
+        $this->assertTrue(Schema::hasColumn('articles', 'slug'), "Column [slug] missing.");
+        $this->assertTrue(Schema::hasColumn('articles', 'content'), "Column [content] missing.");
+        $this->assertTrue(Schema::hasColumn('articles', 'excerpt'), "Column [excerpt] missing.");
+        $this->assertTrue(Schema::hasColumn('articles', 'status'), "Column [status] missing.");
+        $this->assertTrue(Schema::hasColumn('articles', 'published_at'), "Column [published_at] missing.");
+        $this->assertTrue(Schema::hasColumn('articles', 'views'), "Column [views] missing.");
+    }
 
+    #[Test]
+    public function model_fillable_is_resolved_from_schema(): void
+    {
+        $model = new Article;
+        $this->assertContains('user_id', $model->getFillable(), "[user_id] should be fillable.");
+        $this->assertContains('title', $model->getFillable(), "[title] should be fillable.");
+        $this->assertContains('slug', $model->getFillable(), "[slug] should be fillable.");
+        $this->assertContains('content', $model->getFillable(), "[content] should be fillable.");
+        $this->assertContains('excerpt', $model->getFillable(), "[excerpt] should be fillable.");
+        $this->assertContains('status', $model->getFillable(), "[status] should be fillable.");
+        $this->assertContains('published_at', $model->getFillable(), "[published_at] should be fillable.");
+    }
+
+    #[Test]
+    public function model_casts_are_resolved_from_schema(): void
+    {
+        $casts = (new Article)->getCasts();
+        $this->assertArrayHasKey('published_at', $casts);
+        $this->assertSame('datetime', $casts['published_at']);
+        $this->assertArrayHasKey('views', $casts);
+        $this->assertSame('integer', $casts['views']);
     }
 
     #[Test]
     public function model_table_is_resolved_from_schema(): void
     {
         $this->assertSame('articles', (new Article)->getTable());
+    }
+
+    #[Test]
+    public function validation_fails_when_required_fields_are_missing(): void
+    {
+        $errors = $this->schemaValidate([]);
+        $this->assertTrue($errors->has('title'), "[title] should fail required.");
+        $this->assertTrue($errors->has('content'), "[content] should fail required.");
+    }
+
+    #[Test]
+    public function validation_fails_when_status_is_not_in_allowed_values(): void
+    {
+        $data           = $this->validData();
+        $data['status'] = '__invalid__';
+
+        $errors = $this->schemaValidate($data);
+
+        $this->assertTrue($errors->has('status'));
     }
 
     #[Test]
@@ -46,6 +95,28 @@ class ArticleTest extends TestCase
         $this->assertDatabaseHas($model->getTable(), ['id' => $model->id]);
     }
 
+    #[Test]
+    public function soft_delete_works(): void
+    {
+        $model = Article::create($this->createData());
+        $id    = $model->id;
+
+        $model->delete();
+
+        $this->assertNull(Article::find($id));
+        $this->assertNotNull(Article::withTrashed()->find($id)?->deleted_at);
+    }
+
+    #[Test]
+    public function soft_deleted_record_can_be_restored(): void
+    {
+        $model = Article::create($this->createData());
+        $model->delete();
+        $model->restore();
+
+        $this->assertNotNull(Article::find($model->id));
+    }
+
     // -------------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------------
@@ -54,7 +125,13 @@ class ArticleTest extends TestCase
     private function validData(): array
     {
         return [
-
+            'user_id' => 1,
+            'title' => 'aa',
+            'slug' => 'aa',
+            'content' => 'aa',
+            'excerpt' => null,
+            'status' => 'draft',
+            'published_at' => now()->toDateString(),
         ];
     }
 

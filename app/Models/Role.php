@@ -11,7 +11,7 @@ use App\Schema\RoleSchema;
 use App\Models\Department;
 use App\Models\Profile;
 use App\Models\Article;
-use App\Models\Role;
+use App\Models\History;
 use App\Models\Team;
 #[UsesSchema(RoleSchema::class)]
 class Role extends Model
@@ -39,23 +39,23 @@ class Role extends Model
 
     public function profile(): \Illuminate\Database\Eloquent\Relations\HasOne
     {
-        return $this->hasOne(\App\Models\Profile::class, 'user_id');
+        return $this->hasOne(\App\Models\Profile::class, 'role_id');
     }
 
     public function articles(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
-        return $this->hasMany(\App\Models\Article::class, 'user_id');
+        return $this->hasMany(\App\Models\Article::class, 'role_id');
     }
 
-    public function roles(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    public function history(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
     {
-        return $this->belongsToMany(\App\Models\Role::class, 'role_user', 'user_id', 'role_id')
+        return $this->belongsToMany(\App\Models\History::class, 'history_role', 'role_id', 'history_id')
             ->withTimestamps();
     }
 
     public function teams(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
     {
-        return $this->belongsToMany(\App\Models\Team::class, 'team_user', 'user_id', 'team_id')
+        return $this->belongsToMany(\App\Models\Team::class, 'team_role', 'role_id', 'team_id')
             ->withPivot('joined_at');
     }
 }

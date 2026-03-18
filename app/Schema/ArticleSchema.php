@@ -3,57 +3,77 @@
 namespace App\Schema;
 
 // ── Migration ──────────────────────────────────────────────────────────────
-use App\Attributes\Migration\Table;
+use App\Attributes\Migration\BelongsTo;
 use App\Attributes\Migration\Column;
+use App\Attributes\Migration\ForeignKey;
 use App\Attributes\Migration\PrimaryKey;
-// use App\Attributes\Migration\ForeignKey;
-// use App\Attributes\Migration\HasOne;
-// use App\Attributes\Migration\HasMany;
-// use App\Attributes\Migration\BelongsTo;
-// use App\Attributes\Migration\BelongsToMany;
-
+use App\Attributes\Migration\Table;
 // ── Validation ─────────────────────────────────────────────────────────────
-use App\Attributes\Validation\Required;
-use App\Attributes\Validation\Min;
-use App\Attributes\Validation\Max;
-// use App\Attributes\Validation\Email;
-// use App\Attributes\Validation\Numeric;
-// use App\Attributes\Validation\In;
-// use App\Attributes\Validation\Unique;
-// use App\Attributes\Validation\Confirmed;
-// use App\Attributes\Validation\Regex;
-use App\Attributes\Validation\Uuid;
-
-// ── Model ──────────────────────────────────────────────────────────────────
+use App\Attributes\Model\Cast;
 use App\Attributes\Model\EloquentModel;
 use App\Attributes\Model\Fillable;
-// use App\Attributes\Model\Hidden;
-// use App\Attributes\Model\Cast;
-// use App\Attributes\Model\Appended;
-
-// NOTE: The model class name is 'Article' (without 'Schema' suffix).
-// This import is required so PHP resolves Article::class to App\Models\Article
-// and not to App\Schema\Article.
+use App\Attributes\Validation\In;
+// ── Model ──────────────────────────────────────────────────────────────────
+use App\Attributes\Validation\Max;
+use App\Attributes\Validation\Min;
+use App\Attributes\Validation\Required;
+// Model
 use App\Models\Article;
 
 #[EloquentModel(model: Article::class)]
-#[Table(name: 'articles', timestamps: true, softDeletes: false)]
+#[Table(name: 'articles', timestamps: true, softDeletes: true)]
 class ArticleSchema
 {
-    // ── Primary key (UUID v4) ──────────────────────────────────────────────
-    // $incrementing = false and $keyType = 'string' are set automatically
-    // by HasSchema when it reads #[PrimaryKey(type: 'uuid')].
+    // ── Primary Key ────────────────────────────────────────────────────────
+    #[PrimaryKey(type: 'bigIncrements')]
+    public int $id;
 
-    #[PrimaryKey(type: 'uuid')]
-    #[Uuid(version: 4)]
-    public string $id;
+    // ── User Relation (Author) ─────────────────────────────────────────────
+    #[Column(type: 'unsignedBigInteger', nullable: false, index: true)]
+    #[ForeignKey(references: 'id', on: 'users', onDelete: 'cascade')]
+    #[Fillable] // ← add this
+    #[BelongsTo(related: UserSchema::class)]
+    public int $user_id;
 
-    // ── Add your columns below ─────────────────────────────────────────────
-    //
-    // #[Column(type: 'string', length: 100, nullable: false)]
-    // #[Fillable]
-    // #[Required(message: 'ArticleSchema name is required.')]
-    // #[Min(2,   message: 'Name must be at least 2 characters.')]
-    // #[Max(100, message: 'Name must not exceed 100 characters.')]
-    // public string $name;
+    // ── Title ──────────────────────────────────────────────────────────────
+    #[Column(type: 'string', length: 191, nullable: false)]
+    #[Fillable]
+    #[Required]
+    #[Min(2)]
+    #[Max(191)]
+    public string $title;
+
+    // ── Slug ───────────────────────────────────────────────────────────────
+    #[Column(type: 'string', length: 191, unique: true)]
+    #[Fillable]
+    public string $slug;
+
+    // ── Content ────────────────────────────────────────────────────────────
+    #[Column(type: 'longText', nullable: false)]
+    #[Fillable]
+    #[Required]
+    public string $content;
+
+    // ── Excerpt ────────────────────────────────────────────────────────────
+    #[Column(type: 'string', length: 255, nullable: true)]
+    #[Fillable]
+    #[Max(255)]
+    public ?string $excerpt = null;
+
+    // ── Status ─────────────────────────────────────────────────────────────
+    #[Column(type: 'string', length: 20, default: 'draft', index: true)]
+    #[Fillable]
+    #[In('draft', 'published', 'archived')]
+    public string $status = 'draft';
+
+    // ── Published At ───────────────────────────────────────────────────────
+    #[Column(type: 'timestamp', nullable: true)]
+    #[Fillable]
+    #[Cast('datetime')]
+    public ?string $published_at = null;
+
+    // ── Views ──────────────────────────────────────────────────────────────
+    #[Column(type: 'unsignedBigInteger', default: 0)]
+    #[Cast('integer')]
+    public int $views = 0;
 }
