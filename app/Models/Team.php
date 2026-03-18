@@ -1,0 +1,17 @@
+<?php
+
+namespace App\Models;
+
+use App\Attributes\Model\UsesSchema;
+use App\Schema\TeamSchema;
+use App\Traits\HasSchema;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+#[UsesSchema(TeamSchema::class)]
+class Team extends Model
+{
+    use HasFactory, HasSchema;
+
+    protected $table = 'teams';
+}
