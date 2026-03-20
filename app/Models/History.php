@@ -2,11 +2,11 @@
 
 namespace App\Models;
 
-use App\Attributes\Model\UsesSchema;
-use App\Schema\HistorySchema;
-use App\Traits\HasSchema;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Liar88828\LaravelSchemaAttributes\Attributes\Model\UsesSchema;
+use Liar88828\LaravelSchemaAttributes\Traits\HasSchema;
+use App\Schema\HistorySchema;
 
 #[UsesSchema(HistorySchema::class)]
 class History extends Model

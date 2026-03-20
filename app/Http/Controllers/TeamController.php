@@ -3,22 +3,23 @@
 namespace App\Http\Controllers;
 
 use App\Models\Team;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response;
 use Spatie\RouteAttributes\Attributes\Delete;
 use Spatie\RouteAttributes\Attributes\Get;
+use Spatie\RouteAttributes\Attributes\Patch;
 use Spatie\RouteAttributes\Attributes\Post;
 use Spatie\RouteAttributes\Attributes\Prefix;
 use Spatie\RouteAttributes\Attributes\Put;
+use App\Services\TeamService;
 
 /**
  * TeamController
  *
  * Routes registered automatically via spatie/laravel-route-attributes.
- * Requires: composer require spatie/laravel-route-attributes
  */
-#[Prefix('teams')]
+#[Prefix('api/teams')]
 class TeamController extends Controller
 {
     // ── GET /teams ──────────────────────────────────────────────────────────
@@ -26,11 +27,7 @@ class TeamController extends Controller
     #[Get('/')]
     public function index(Request $request): JsonResponse
     {
-        $teams = Team::query()
-            ->when($request->filled('search'), fn ($q) => $q->where('id', 'like', "%{$request->search}%")
-            )
-            ->latest()
-            ->paginate($request->integer('per_page', 15));
+        $teams = TeamService::index($request);
 
         return response()->json($teams);
     }
@@ -41,7 +38,7 @@ class TeamController extends Controller
     public function store(Request $request): JsonResponse
     {
         Team::schemaValidateOrFail($request->all());
-        $team = Team::create($request->only(['name', 'slug', 'description']));
+        $team = TeamService::store($request->only(['name', 'slug', 'description']));
 
         return response()->json($team, Response::HTTP_CREATED);
     }
@@ -60,7 +57,7 @@ class TeamController extends Controller
     public function update(Request $request, Team $team): JsonResponse
     {
         $team->schemaValidateForUpdate($request->all());
-        $team->update($request->only(['name', 'slug', 'description']));
+        TeamService::update($team, $request->only(['name', 'slug', 'description']));
 
         return response()->json($team->fresh());
     }
@@ -70,8 +67,9 @@ class TeamController extends Controller
     #[Delete('/{team}')]
     public function destroy(Team $team): JsonResponse
     {
-        $team->delete();
+        TeamService::destroy($team);
 
         return response()->json(['message' => 'Team deleted.']);
     }
+
 }

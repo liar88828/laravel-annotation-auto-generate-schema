@@ -3,22 +3,23 @@
 namespace App\Http\Controllers;
 
 use App\Models\History;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response;
 use Spatie\RouteAttributes\Attributes\Delete;
 use Spatie\RouteAttributes\Attributes\Get;
+use Spatie\RouteAttributes\Attributes\Patch;
 use Spatie\RouteAttributes\Attributes\Post;
 use Spatie\RouteAttributes\Attributes\Prefix;
 use Spatie\RouteAttributes\Attributes\Put;
+use App\Services\HistoryService;
 
 /**
  * HistoryController
  *
  * Routes registered automatically via spatie/laravel-route-attributes.
- * Requires: composer require spatie/laravel-route-attributes
  */
-#[Prefix('histories')]
+#[Prefix('api/histories')]
 class HistoryController extends Controller
 {
     // ── GET /histories ──────────────────────────────────────────────────────────
@@ -26,11 +27,7 @@ class HistoryController extends Controller
     #[Get('/')]
     public function index(Request $request): JsonResponse
     {
-        $historys = History::query()
-            ->when($request->filled('search'), fn ($q) => $q->where('id', 'like', "%{$request->search}%")
-            )
-            ->latest()
-            ->paginate($request->integer('per_page', 15));
+        $historys = HistoryService::index($request);
 
         return response()->json($historys);
     }
@@ -41,7 +38,7 @@ class HistoryController extends Controller
     public function store(Request $request): JsonResponse
     {
         History::schemaValidateOrFail($request->all());
-        $history = History::create($request->only(['action', 'description']));
+        $history = HistoryService::store($request->only(['action', 'description']));
 
         if ($request->has('role_ids')) {
             $history->roles()->sync($request->role_ids);
@@ -64,7 +61,7 @@ class HistoryController extends Controller
     public function update(Request $request, History $history): JsonResponse
     {
         $history->schemaValidateForUpdate($request->all());
-        $history->update($request->only(['action', 'description']));
+        HistoryService::update($history, $request->only(['action', 'description']));
 
         if ($request->has('role_ids')) {
             $history->roles()->sync($request->role_ids);
@@ -78,8 +75,9 @@ class HistoryController extends Controller
     #[Delete('/{history}')]
     public function destroy(History $history): JsonResponse
     {
-        $history->delete();
+        HistoryService::destroy($history);
 
         return response()->json(['message' => 'History deleted.']);
     }
+
 }

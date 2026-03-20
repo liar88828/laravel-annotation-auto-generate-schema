@@ -2,12 +2,12 @@
 
 namespace Tests\Unit;
 
+use Tests\TestCase;
 use App\Models\Profile;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\MessageBag;
+use Illuminate\Support\Str;
 use PHPUnit\Framework\Attributes\Test;
-use Tests\TestCase;
 
 /**
  * ProfileTest
@@ -28,24 +28,24 @@ class ProfileTest extends TestCase
     #[Test]
     public function it_has_the_expected_columns(): void
     {
-        $this->assertTrue(Schema::hasColumn('profiles', 'role_id'), 'Column [role_id] missing.');
-        $this->assertTrue(Schema::hasColumn('profiles', 'bio'), 'Column [bio] missing.');
-        $this->assertTrue(Schema::hasColumn('profiles', 'avatar'), 'Column [avatar] missing.');
-        $this->assertTrue(Schema::hasColumn('profiles', 'phone'), 'Column [phone] missing.');
-        $this->assertTrue(Schema::hasColumn('profiles', 'address'), 'Column [address] missing.');
-        $this->assertTrue(Schema::hasColumn('profiles', 'birth_date'), 'Column [birth_date] missing.');
+        $this->assertTrue(Schema::hasColumn('profiles', 'role_id'), "Column [role_id] missing.");
+        $this->assertTrue(Schema::hasColumn('profiles', 'bio'), "Column [bio] missing.");
+        $this->assertTrue(Schema::hasColumn('profiles', 'avatar'), "Column [avatar] missing.");
+        $this->assertTrue(Schema::hasColumn('profiles', 'phone'), "Column [phone] missing.");
+        $this->assertTrue(Schema::hasColumn('profiles', 'address'), "Column [address] missing.");
+        $this->assertTrue(Schema::hasColumn('profiles', 'birth_date'), "Column [birth_date] missing.");
     }
 
     #[Test]
     public function model_fillable_is_resolved_from_schema(): void
     {
         $model = new Profile;
-        $this->assertContains('role_id', $model->getFillable(), '[role_id] should be fillable.');
-        $this->assertContains('bio', $model->getFillable(), '[bio] should be fillable.');
-        $this->assertContains('avatar', $model->getFillable(), '[avatar] should be fillable.');
-        $this->assertContains('phone', $model->getFillable(), '[phone] should be fillable.');
-        $this->assertContains('address', $model->getFillable(), '[address] should be fillable.');
-        $this->assertContains('birth_date', $model->getFillable(), '[birth_date] should be fillable.');
+        $this->assertContains('role_id', $model->getFillable(), "[role_id] should be fillable.");
+        $this->assertContains('bio', $model->getFillable(), "[bio] should be fillable.");
+        $this->assertContains('avatar', $model->getFillable(), "[avatar] should be fillable.");
+        $this->assertContains('phone', $model->getFillable(), "[phone] should be fillable.");
+        $this->assertContains('address', $model->getFillable(), "[address] should be fillable.");
+        $this->assertContains('birth_date', $model->getFillable(), "[birth_date] should be fillable.");
     }
 
     #[Test]
@@ -66,7 +66,7 @@ class ProfileTest extends TestCase
     public function validation_fails_when_required_fields_are_missing(): void
     {
         $errors = $this->schemaValidate([]);
-        $this->assertTrue($errors->has('role_id'), '[role_id] should fail required.');
+        $this->assertTrue($errors->has('role_id'), "[role_id] should fail required.");
     }
 
     #[Test]
@@ -104,7 +104,7 @@ class ProfileTest extends TestCase
         return Profile::factory()->raw();
     }
 
-    private function schemaValidate(array $data, array $ignoreUniqueFor = [], bool $skipMissing = false): MessageBag
+    private function schemaValidate(array $data, array $ignoreUniqueFor = [], bool $skipMissing = false): \Illuminate\Support\MessageBag
     {
         return Profile::schemaValidate($data, $ignoreUniqueFor, $skipMissing);
     }

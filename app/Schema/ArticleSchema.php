@@ -3,22 +3,39 @@
 namespace App\Schema;
 
 // ── Migration ──────────────────────────────────────────────────────────────
-use App\Attributes\Migration\BelongsTo;
-use App\Attributes\Migration\Column;
-use App\Attributes\Migration\ForeignSchema;
-use App\Attributes\Migration\PrimaryKey;
-use App\Attributes\Migration\Table;
-// ── Validation ─────────────────────────────────────────────────────────────
-use App\Attributes\Model\Cast;
-use App\Attributes\Model\EloquentModel;
-use App\Attributes\Model\Fillable;
-use App\Attributes\Validation\In;
-// ── Model ──────────────────────────────────────────────────────────────────
-use App\Attributes\Validation\Max;
-use App\Attributes\Validation\Min;
-use App\Attributes\Validation\Required;
-// Model
 use App\Models\Article;
+use Liar88828\LaravelSchemaAttributes\Attributes\Migration\BelongsTo;
+use Liar88828\LaravelSchemaAttributes\Attributes\Migration\Column;
+use Liar88828\LaravelSchemaAttributes\Attributes\Migration\ForeignSchema;
+use Liar88828\LaravelSchemaAttributes\Attributes\Migration\PrimaryKey;
+// use Liar88828\LaravelSchemaAttributes\Attributes\Migration\ForeignKey;
+// use Liar88828\LaravelSchemaAttributes\Attributes\Migration\HasOne;
+// use Liar88828\LaravelSchemaAttributes\Attributes\Migration\HasMany;
+// use Liar88828\LaravelSchemaAttributes\Attributes\Migration\BelongsTo;
+// use Liar88828\LaravelSchemaAttributes\Attributes\Migration\BelongsToMany;
+
+// ── Validation ─────────────────────────────────────────────────────────────
+use Liar88828\LaravelSchemaAttributes\Attributes\Migration\Table;
+use Liar88828\LaravelSchemaAttributes\Attributes\Model\Cast;
+use Liar88828\LaravelSchemaAttributes\Attributes\Model\EloquentModel;
+use Liar88828\LaravelSchemaAttributes\Attributes\Model\Fillable;
+use Liar88828\LaravelSchemaAttributes\Attributes\Validation\In;
+// use Liar88828\LaravelSchemaAttributes\Attributes\Validation\Email;
+// use Liar88828\LaravelSchemaAttributes\Attributes\Validation\Numeric;
+// use Liar88828\LaravelSchemaAttributes\Attributes\Validation\In;
+// use Liar88828\LaravelSchemaAttributes\Attributes\Validation\Unique;
+// use Liar88828\LaravelSchemaAttributes\Attributes\Validation\Confirmed;
+// use Liar88828\LaravelSchemaAttributes\Attributes\Validation\Regex;
+
+// ── Model ──────────────────────────────────────────────────────────────────
+use Liar88828\LaravelSchemaAttributes\Attributes\Validation\Max;
+use Liar88828\LaravelSchemaAttributes\Attributes\Validation\Min;
+// use Liar88828\LaravelSchemaAttributes\Attributes\Model\Hidden;
+// use Liar88828\LaravelSchemaAttributes\Attributes\Model\Cast;
+// use Liar88828\LaravelSchemaAttributes\Attributes\Model\Appended;
+
+// Model
+use Liar88828\LaravelSchemaAttributes\Attributes\Validation\Required;
 
 #[EloquentModel(model: Article::class)]
 #[Table(name: 'articles', timestamps: true, softDeletes: true)]

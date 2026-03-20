@@ -2,12 +2,12 @@
 
 namespace Tests\Unit;
 
+use Tests\TestCase;
 use App\Models\Article;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\MessageBag;
+use Illuminate\Support\Str;
 use PHPUnit\Framework\Attributes\Test;
-use Tests\TestCase;
 
 /**
  * ArticleTest
@@ -28,27 +28,27 @@ class ArticleTest extends TestCase
     #[Test]
     public function it_has_the_expected_columns(): void
     {
-        $this->assertTrue(Schema::hasColumn('articles', 'role_id'), 'Column [role_id] missing.');
-        $this->assertTrue(Schema::hasColumn('articles', 'title'), 'Column [title] missing.');
-        $this->assertTrue(Schema::hasColumn('articles', 'slug'), 'Column [slug] missing.');
-        $this->assertTrue(Schema::hasColumn('articles', 'content'), 'Column [content] missing.');
-        $this->assertTrue(Schema::hasColumn('articles', 'excerpt'), 'Column [excerpt] missing.');
-        $this->assertTrue(Schema::hasColumn('articles', 'status'), 'Column [status] missing.');
-        $this->assertTrue(Schema::hasColumn('articles', 'published_at'), 'Column [published_at] missing.');
-        $this->assertTrue(Schema::hasColumn('articles', 'views'), 'Column [views] missing.');
+        $this->assertTrue(Schema::hasColumn('articles', 'role_id'), "Column [role_id] missing.");
+        $this->assertTrue(Schema::hasColumn('articles', 'title'), "Column [title] missing.");
+        $this->assertTrue(Schema::hasColumn('articles', 'slug'), "Column [slug] missing.");
+        $this->assertTrue(Schema::hasColumn('articles', 'content'), "Column [content] missing.");
+        $this->assertTrue(Schema::hasColumn('articles', 'excerpt'), "Column [excerpt] missing.");
+        $this->assertTrue(Schema::hasColumn('articles', 'status'), "Column [status] missing.");
+        $this->assertTrue(Schema::hasColumn('articles', 'published_at'), "Column [published_at] missing.");
+        $this->assertTrue(Schema::hasColumn('articles', 'views'), "Column [views] missing.");
     }
 
     #[Test]
     public function model_fillable_is_resolved_from_schema(): void
     {
         $model = new Article;
-        $this->assertContains('role_id', $model->getFillable(), '[role_id] should be fillable.');
-        $this->assertContains('title', $model->getFillable(), '[title] should be fillable.');
-        $this->assertContains('slug', $model->getFillable(), '[slug] should be fillable.');
-        $this->assertContains('content', $model->getFillable(), '[content] should be fillable.');
-        $this->assertContains('excerpt', $model->getFillable(), '[excerpt] should be fillable.');
-        $this->assertContains('status', $model->getFillable(), '[status] should be fillable.');
-        $this->assertContains('published_at', $model->getFillable(), '[published_at] should be fillable.');
+        $this->assertContains('role_id', $model->getFillable(), "[role_id] should be fillable.");
+        $this->assertContains('title', $model->getFillable(), "[title] should be fillable.");
+        $this->assertContains('slug', $model->getFillable(), "[slug] should be fillable.");
+        $this->assertContains('content', $model->getFillable(), "[content] should be fillable.");
+        $this->assertContains('excerpt', $model->getFillable(), "[excerpt] should be fillable.");
+        $this->assertContains('status', $model->getFillable(), "[status] should be fillable.");
+        $this->assertContains('published_at', $model->getFillable(), "[published_at] should be fillable.");
     }
 
     #[Test]
@@ -71,15 +71,15 @@ class ArticleTest extends TestCase
     public function validation_fails_when_required_fields_are_missing(): void
     {
         $errors = $this->schemaValidate([]);
-        $this->assertTrue($errors->has('role_id'), '[role_id] should fail required.');
-        $this->assertTrue($errors->has('title'), '[title] should fail required.');
-        $this->assertTrue($errors->has('content'), '[content] should fail required.');
+        $this->assertTrue($errors->has('role_id'), "[role_id] should fail required.");
+        $this->assertTrue($errors->has('title'), "[title] should fail required.");
+        $this->assertTrue($errors->has('content'), "[content] should fail required.");
     }
 
     #[Test]
     public function validation_fails_when_status_is_not_in_allowed_values(): void
     {
-        $data = $this->validData();
+        $data           = $this->validData();
         $data['status'] = '__invalid__';
 
         $errors = $this->schemaValidate($data);
@@ -100,7 +100,7 @@ class ArticleTest extends TestCase
     public function soft_delete_works(): void
     {
         $model = Article::create($this->createData());
-        $id = $model->id;
+        $id    = $model->id;
 
         $model->delete();
 
@@ -145,7 +145,7 @@ class ArticleTest extends TestCase
         return Article::factory()->raw();
     }
 
-    private function schemaValidate(array $data, array $ignoreUniqueFor = [], bool $skipMissing = false): MessageBag
+    private function schemaValidate(array $data, array $ignoreUniqueFor = [], bool $skipMissing = false): \Illuminate\Support\MessageBag
     {
         return Article::schemaValidate($data, $ignoreUniqueFor, $skipMissing);
     }

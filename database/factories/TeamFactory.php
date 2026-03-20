@@ -4,13 +4,14 @@ namespace Database\Factories;
 
 use App\Models\Team;
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Str;
 
 /**
  * TeamFactory
  *
  * Generated from schema annotations.
- * Faker calls are derived from #[Column] type, field name heuristics,
- * and validation attributes (#[In], #[Email], #[Uuid], #[Min], #[Max]).
+ * Faker calls are derived from #[CMigration]/#[Column] type, field name heuristics,
+ * and validation attributes (#[CValidation], #[In], #[Email], #[Uuid], #[Min], #[Max]).
  *
  * @extends Factory<Team>
  */
@@ -29,7 +30,7 @@ class TeamFactory extends Factory
 
     /**
      * Store the model bypassing mass assignment so FK columns not in $fillable
-     * (e.g. user_id) are still persisted correctly.
+     * are still persisted correctly.
      */
     protected function store(iterable $results): void
     {

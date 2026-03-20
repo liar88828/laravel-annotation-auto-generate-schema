@@ -3,22 +3,23 @@
 namespace App\Http\Controllers;
 
 use App\Models\Department;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response;
 use Spatie\RouteAttributes\Attributes\Delete;
 use Spatie\RouteAttributes\Attributes\Get;
+use Spatie\RouteAttributes\Attributes\Patch;
 use Spatie\RouteAttributes\Attributes\Post;
 use Spatie\RouteAttributes\Attributes\Prefix;
 use Spatie\RouteAttributes\Attributes\Put;
+use App\Services\DepartmentService;
 
 /**
  * DepartmentController
  *
  * Routes registered automatically via spatie/laravel-route-attributes.
- * Requires: composer require spatie/laravel-route-attributes
  */
-#[Prefix('departments')]
+#[Prefix('api/departments')]
 class DepartmentController extends Controller
 {
     // ── GET /departments ──────────────────────────────────────────────────────────
@@ -26,11 +27,7 @@ class DepartmentController extends Controller
     #[Get('/')]
     public function index(Request $request): JsonResponse
     {
-        $departments = Department::query()
-            ->when($request->filled('search'), fn ($q) => $q->where('id', 'like', "%{$request->search}%")
-            )
-            ->latest()
-            ->paginate($request->integer('per_page', 15));
+        $departments = DepartmentService::index($request);
 
         return response()->json($departments);
     }
@@ -41,7 +38,7 @@ class DepartmentController extends Controller
     public function store(Request $request): JsonResponse
     {
         Department::schemaValidateOrFail($request->all());
-        $department = Department::create($request->only(['name', 'code', 'slug', 'description', 'status', 'budget']));
+        $department = DepartmentService::store($request->only(['name', 'code', 'slug', 'description', 'status', 'budget']));
 
         return response()->json($department->load(['roles']), Response::HTTP_CREATED);
     }
@@ -60,7 +57,7 @@ class DepartmentController extends Controller
     public function update(Request $request, Department $department): JsonResponse
     {
         $department->schemaValidateForUpdate($request->all());
-        $department->update($request->only(['name', 'code', 'slug', 'description', 'status', 'budget']));
+        DepartmentService::update($department, $request->only(['name', 'code', 'slug', 'description', 'status', 'budget']));
 
         return response()->json($department->fresh()->load(['roles']));
     }
@@ -70,8 +67,9 @@ class DepartmentController extends Controller
     #[Delete('/{department}')]
     public function destroy(Department $department): JsonResponse
     {
-        $department->delete();
+        DepartmentService::destroy($department);
 
         return response()->json(['message' => 'Department deleted.']);
     }
+
 }

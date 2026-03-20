@@ -3,15 +3,15 @@
 namespace Database\Factories;
 
 use App\Models\Profile;
-use App\Models\Role;
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Str;
 
 /**
  * ProfileFactory
  *
  * Generated from schema annotations.
- * Faker calls are derived from #[Column] type, field name heuristics,
- * and validation attributes (#[In], #[Email], #[Uuid], #[Min], #[Max]).
+ * Faker calls are derived from #[CMigration]/#[Column] type, field name heuristics,
+ * and validation attributes (#[CValidation], #[In], #[Email], #[Uuid], #[Min], #[Max]).
  *
  * @extends Factory<Profile>
  */
@@ -22,7 +22,7 @@ class ProfileFactory extends Factory
     public function definition(): array
     {
         return [
-            'role_id' => Role::factory()->create()->getKey(),
+            'role_id' => \App\Models\Role::factory()->create()->getKey(),
             'bio' => fake()->boolean(80) ? fake()->paragraph() : null,
             'avatar' => fake()->boolean(80) ? fake()->imageUrl() : null,
             'phone' => fake()->boolean(80) ? fake()->phoneNumber() : null,
@@ -33,7 +33,7 @@ class ProfileFactory extends Factory
 
     /**
      * Store the model bypassing mass assignment so FK columns not in $fillable
-     * (e.g. user_id) are still persisted correctly.
+     * are still persisted correctly.
      */
     protected function store(iterable $results): void
     {

@@ -3,15 +3,15 @@
 namespace Database\Factories;
 
 use App\Models\Article;
-use App\Models\Role;
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Str;
 
 /**
  * ArticleFactory
  *
  * Generated from schema annotations.
- * Faker calls are derived from #[Column] type, field name heuristics,
- * and validation attributes (#[In], #[Email], #[Uuid], #[Min], #[Max]).
+ * Faker calls are derived from #[CMigration]/#[Column] type, field name heuristics,
+ * and validation attributes (#[CValidation], #[In], #[Email], #[Uuid], #[Min], #[Max]).
  *
  * @extends Factory<Article>
  */
@@ -22,7 +22,7 @@ class ArticleFactory extends Factory
     public function definition(): array
     {
         return [
-            'role_id' => Role::factory()->create()->getKey(),
+            'role_id' => \App\Models\Role::factory()->create()->getKey(),
             'title' => fake()->sentence(3),
             'slug' => fake()->slug(),
             'content' => fake()->paragraphs(3, true),
@@ -34,7 +34,7 @@ class ArticleFactory extends Factory
 
     /**
      * Store the model bypassing mass assignment so FK columns not in $fillable
-     * (e.g. user_id) are still persisted correctly.
+     * are still persisted correctly.
      */
     protected function store(iterable $results): void
     {

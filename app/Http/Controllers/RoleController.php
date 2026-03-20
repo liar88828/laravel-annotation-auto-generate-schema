@@ -3,8 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Role;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response;
 use Spatie\RouteAttributes\Attributes\Delete;
 use Spatie\RouteAttributes\Attributes\Get;
@@ -12,14 +12,14 @@ use Spatie\RouteAttributes\Attributes\Patch;
 use Spatie\RouteAttributes\Attributes\Post;
 use Spatie\RouteAttributes\Attributes\Prefix;
 use Spatie\RouteAttributes\Attributes\Put;
+use App\Services\RoleService;
 
 /**
  * RoleController
  *
  * Routes registered automatically via spatie/laravel-route-attributes.
- * Requires: composer require spatie/laravel-route-attributes
  */
-#[Prefix('roles')]
+#[Prefix('api/roles')]
 class RoleController extends Controller
 {
     // ── GET /roles ──────────────────────────────────────────────────────────
@@ -27,12 +27,7 @@ class RoleController extends Controller
     #[Get('/')]
     public function index(Request $request): JsonResponse
     {
-        $roles = Role::query()
-            ->when($request->filled('search'), fn ($q) => $q->where('id', 'like', "%{$request->search}%")
-            )
-            ->when($request->filled('department_id'), fn ($q) => $q->where('department_id', $request->department_id))
-            ->latest()
-            ->paginate($request->integer('per_page', 15));
+        $roles = RoleService::index($request);
 
         return response()->json($roles);
     }
@@ -43,7 +38,7 @@ class RoleController extends Controller
     public function store(Request $request): JsonResponse
     {
         Role::schemaValidateOrFail($request->all());
-        $role = Role::create($request->only(['public_id', 'name', 'status', 'age', 'born_at', 'department_id']));
+        $role = RoleService::store($request->only(['public_id', 'name', 'status', 'age', 'born_at', 'department_id']));
 
         if ($request->has('history_ids')) {
             $role->history()->sync($request->history_ids);
@@ -69,7 +64,7 @@ class RoleController extends Controller
     public function update(Request $request, Role $role): JsonResponse
     {
         $role->schemaValidateForUpdate($request->all());
-        $role->update($request->only(['public_id', 'name', 'status', 'age', 'born_at', 'department_id']));
+        RoleService::update($role, $request->only(['public_id', 'name', 'status', 'age', 'born_at', 'department_id']));
 
         if ($request->has('history_ids')) {
             $role->history()->sync($request->history_ids);
@@ -86,10 +81,11 @@ class RoleController extends Controller
     #[Delete('/{role}')]
     public function destroy(Role $role): JsonResponse
     {
-        $role->delete();
+        RoleService::destroy($role);
 
         return response()->json(['message' => 'Role deleted.']);
     }
+
 
     // ── PATCH /roles/restore/{id} ───────────────────────────────────────────
 

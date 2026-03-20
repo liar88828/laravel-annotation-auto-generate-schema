@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "009b81d3e570657e29dc374a30588dce",
+    "content-hash": "aec23e42a729cae60441ba755ec3d2d5",
     "packages": [
         {
             "name": "bacon/bacon-qr-code",
@@ -2323,6 +2323,70 @@
                 }
             ],
             "time": "2026-03-08T20:05:35+00:00"
+        },
+        {
+            "name": "liar88828/laravel-schema-attributes",
+            "version": "dev-main",
+            "dist": {
+                "type": "path",
+                "url": "../laravel-schema-attributes",
+                "reference": "bb3ea4c70466b40f16164000362e2a5fbd7e424e"
+            },
+            "require": {
+                "illuminate/console": "^11.0|^12.0",
+                "illuminate/database": "^11.0|^12.0",
+                "illuminate/filesystem": "^11.0|^12.0",
+                "illuminate/support": "^11.0|^12.0",
+                "php": "^8.2",
+                "spatie/laravel-route-attributes": "^1.0"
+            },
+            "require-dev": {
+                "laravel/pint": "^1.29",
+                "orchestra/testbench": "^9.0",
+                "phpunit/phpunit": "^11.0"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "Liar88828\\LaravelSchemaAttributes\\SchemaServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Liar88828\\LaravelSchemaAttributes\\": "src/"
+                }
+            },
+            "autoload-dev": {
+                "psr-4": {
+                    "Liar88828\\LaravelSchemaAttributes\\Tests\\": "tests/"
+                }
+            },
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "liar88828",
+                    "homepage": "https://github.com/liar88828"
+                }
+            ],
+            "description": "PHP 8 attribute-driven schema compiler for Laravel. One schema class drives migrations, models, factories, controllers, and tests — no duplication.",
+            "homepage": "https://github.com/liar88828/laravel-schema-attributes",
+            "keywords": [
+                "annotations",
+                "attributes",
+                "generator",
+                "laravel",
+                "migration",
+                "model",
+                "php8",
+                "schema"
+            ],
+            "transport-options": {
+                "relative": true
+            }
         },
         {
             "name": "monolog/monolog",
@@ -9182,7 +9246,9 @@
     ],
     "aliases": [],
     "minimum-stability": "stable",
-    "stability-flags": {},
+    "stability-flags": {
+        "liar88828/laravel-schema-attributes": 20
+    },
     "prefer-stable": true,
     "prefer-lowest": false,
     "platform": {
